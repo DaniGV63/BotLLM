@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
 
+    # Google OAuth2 (app-level, para refresh de tokens)
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+
     # Logging
     LOG_LEVEL: str = "INFO"
 

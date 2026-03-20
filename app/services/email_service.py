@@ -1,8 +1,14 @@
-"""Servicio Email: stub para Fase 3. Se implementa real en Fase 4."""
+"""Servicio Email: notificaciones via Gmail API."""
 
+import asyncio
+import base64
 import uuid
+from email.mime.text import MIMEText
 
 import structlog
+from googleapiclient.discovery import build
+
+from app.services.google_auth import get_google_creds
 
 logger = structlog.get_logger()
 
@@ -13,11 +19,53 @@ async def send_notification_email(
     patient_phone: str,
     motivo: str,
 ) -> bool:
-    """STUB: logea la notificacion y devuelve True."""
+    """Envia email al fisio avisando que un paciente quiere contacto.
+
+    Args:
+        tenant_id: UUID del tenant.
+        patient_name: Nombre del paciente (puede ser None).
+        patient_phone: Telefono WhatsApp del paciente.
+        motivo: Razon del contacto o descripcion del error.
+
+    Returns:
+        True si el email se envio correctamente, False si hubo error.
+    """
     log = logger.bind(tenant_id=str(tenant_id), wa_phone=patient_phone)
-    log.info(
-        "send_notification_email_stub",
-        patient_name=patient_name,
-        motivo=motivo,
+    log.info("send_notification_email_start", motivo=motivo)
+
+    try:
+        creds, tenant = await get_google_creds(tenant_id)
+    except ValueError as e:
+        log.error("send_notification_email_no_creds", error=str(e))
+        return False
+
+    nombre_display = patient_name or "Desconocido"
+    body_text = (
+        f"Un paciente solicita contacto a traves del bot de WhatsApp.\n\n"
+        f"Nombre:   {nombre_display}\n"
+        f"Telefono: {patient_phone}\n"
+        f"Motivo:   {motivo}\n\n"
+        f"Por favor, contacta con el paciente a la brevedad posible."
     )
-    return True
+
+    msg = MIMEText(body_text, "plain", "utf-8")
+    msg["To"] = tenant.email_notificaciones
+    msg["Subject"] = "[BotLLM] Paciente solicita contacto"
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+
+    gmail_service = await asyncio.to_thread(
+        build, "gmail", "v1", credentials=creds
+    )
+
+    def _sync_send():
+        return gmail_service.users().messages().send(
+            userId="me", body={"raw": raw}
+        ).execute()
+
+    try:
+        result = await asyncio.to_thread(_sync_send)
+        log.info("send_notification_email_done", message_id=result.get("id"))
+        return True
+    except Exception as e:
+        log.error("send_notification_email_error", error=str(e))
+        return False
