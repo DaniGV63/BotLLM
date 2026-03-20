@@ -36,7 +36,7 @@ def setup_logging() -> None:
 async def lifespan(app: FastAPI):
     setup_logging()
     logger = structlog.get_logger()
-    logger.info("botllm_started", version="0.2.0")
+    logger.info("botllm_started", version="0.3.0")
     yield
     await close_redis()
     logger.info("botllm_stopped")
@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="BotLLM",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 

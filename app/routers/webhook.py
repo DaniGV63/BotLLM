@@ -13,6 +13,7 @@ from app.core.redis import get_redis
 from app.core.security import decrypt, validate_meta_signature
 from app.models.message import Message
 from app.models.tenant import Tenant
+from app.services.agent import handle_message
 from app.services.whatsapp_service import (
     get_tenant_by_phone_number_id,
     parse_incoming_webhook,
@@ -135,10 +136,7 @@ async def receive_webhook(
 async def process_incoming_message(
     tenant_id: uuid.UUID, parsed: dict
 ) -> None:
-    """Stub Fase 2: log + echo del mensaje recibido.
-
-    En Fase 3 se reemplaza por agent.handle_message().
-    """
+    """Procesa mensaje entrante: no-texto responde directo, texto va al agente."""
     log = logger.bind(
         tenant_id=str(tenant_id), wa_phone=parsed["wa_phone"]
     )
@@ -146,7 +144,6 @@ async def process_incoming_message(
     async with SessionLocal() as db:
         try:
             message_type = parsed["message_type"]
-            text = parsed["text"]
             log.info(
                 "processing_message",
                 message_type=message_type,
@@ -159,11 +156,18 @@ async def process_incoming_message(
                     "Solo puedo leer mensajes de texto. "
                     "Por favor, escribe tu mensaje."
                 )
-            else:
-                # STUB Fase 2: echo
-                reply = f"[Echo] Recibido: {text}"
+                await send_text(tenant_id, parsed["wa_phone"], reply, db)
+                return
 
-            await send_text(tenant_id, parsed["wa_phone"], reply, db)
+            # Mensajes de texto: delegar al agente
+            await handle_message(
+                tenant_id=tenant_id,
+                wa_phone=parsed["wa_phone"],
+                message_text=parsed["text"],
+                wa_message_id=parsed["wa_message_id"],
+                db=db,
+            )
+
             log.info("message_processed", wa_message_id=parsed["wa_message_id"])
 
         except Exception:
