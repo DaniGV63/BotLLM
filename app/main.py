@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from app.core.config import settings
 from app.core.redis import close_redis
+from app.routers.webhook import router as webhook_router
 
 
 def setup_logging() -> None:
@@ -35,7 +36,7 @@ def setup_logging() -> None:
 async def lifespan(app: FastAPI):
     setup_logging()
     logger = structlog.get_logger()
-    logger.info("botllm_started", version="0.1.0")
+    logger.info("botllm_started", version="0.2.0")
     yield
     await close_redis()
     logger.info("botllm_stopped")
@@ -43,9 +44,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="BotLLM",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
+
+
+app.include_router(webhook_router)
 
 
 @app.get("/health")
