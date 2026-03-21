@@ -1,11 +1,16 @@
-"""Seguridad: validación HMAC de Meta y encriptación Fernet."""
+"""Seguridad: HMAC, Fernet, bcrypt y JWT."""
 
 import hashlib
 import hmac
+from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from cryptography.fernet import Fernet
+from jose import JWTError, jwt
 
 from app.core.config import settings
+
+JWT_ALGORITHM = "HS256"
 
 _fernet: Fernet | None = None
 
@@ -47,3 +52,39 @@ def encrypt(value: str) -> str:
 def decrypt(value: str) -> str:
     """Desencripta un valor cifrado con Fernet. Devuelve el texto plano."""
     return _get_fernet().decrypt(value.encode()).decode()
+
+
+# --- Bcrypt ---
+
+
+def hash_password(password: str) -> str:
+    """Genera hash bcrypt de una contraseña."""
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    """Compara contraseña en texto plano con hash bcrypt."""
+    return bcrypt.checkpw(password.encode(), hashed.encode())
+
+
+# --- JWT ---
+
+
+def create_access_token(data: dict, expires_minutes: int = 480) -> str:
+    """Genera JWT firmado con HS256. Expira en 8h por defecto."""
+    if not settings.SECRET_KEY:
+        raise ValueError(
+            "SECRET_KEY no está configurada en las variables de entorno"
+        )
+    payload = data.copy()
+    payload["exp"] = datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def decode_access_token(token: str) -> dict:
+    """Decodifica y valida JWT. Lanza JWTError si inválido o expirado."""
+    if not settings.SECRET_KEY:
+        raise ValueError(
+            "SECRET_KEY no está configurada en las variables de entorno"
+        )
+    return jwt.decode(token, settings.SECRET_KEY, algorithms=[JWT_ALGORITHM])
