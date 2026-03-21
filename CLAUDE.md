@@ -115,7 +115,7 @@ LOG_LEVEL=INFO
 
 ## FASE ACTUAL
 
-→ **Fase 1: Infraestructura base** (ver PLAN.md §12 para checklist completo)
+→ **Fase 6: Producción v1.0** (ver DEPLOY.md para guía completa)
 
 ## REFERENCIAS
 
