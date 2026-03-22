@@ -272,5 +272,8 @@ async def handle_message(
         log.error("handle_message_error", error=str(e), exc_info=True)
         try:
             await send_text(tenant_id, wa_phone, FALLBACK_MSG, db)
+            await send_notification_email(
+                tenant_id, None, wa_phone, f"Error tecnico: {type(e).__name__}"
+            )
         except Exception:
             log.error("fallback_send_failed", exc_info=True)

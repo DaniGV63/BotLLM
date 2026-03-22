@@ -115,7 +115,7 @@ LOG_LEVEL=INFO
 
 ## FASE ACTUAL
 
-→ **Fase 6: Producción v1.0** (ver DEPLOY.md para guía completa)
+→ **Fase 6: Producción v1.0.1** (ver DEPLOY.md para guía completa)
 
 ## REFERENCIAS
 

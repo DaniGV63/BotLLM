@@ -74,7 +74,9 @@ async def get_free_slots(
     now = datetime.now(MADRID_TZ)
     time_max = now + timedelta(days=days_ahead)
 
-    svc = await asyncio.to_thread(build, "calendar", "v3", credentials=creds)
+    svc = await asyncio.to_thread(
+        build, "calendar", "v3", credentials=creds, cache_discovery=False
+    )
     events_result = await asyncio.to_thread(
         svc.events().list(
             calendarId=calendar_id,
@@ -127,7 +129,9 @@ async def get_appointment_by_phone(
     calendar_id = tenant.google_calendar_id or "primary"
     now = datetime.now(MADRID_TZ)
 
-    svc = await asyncio.to_thread(build, "calendar", "v3", credentials=creds)
+    svc = await asyncio.to_thread(
+        build, "calendar", "v3", credentials=creds, cache_discovery=False
+    )
     events_result = await asyncio.to_thread(
         svc.events().list(
             calendarId=calendar_id,
@@ -185,7 +189,9 @@ async def create_appointment(
         "extendedProperties": {"private": {"phone": phone}},
     }
 
-    svc = await asyncio.to_thread(build, "calendar", "v3", credentials=creds)
+    svc = await asyncio.to_thread(
+        build, "calendar", "v3", credentials=creds, cache_discovery=False
+    )
     event = await asyncio.to_thread(
         svc.events().insert(calendarId=calendar_id, body=event_body).execute
     )
@@ -204,7 +210,9 @@ async def modify_appointment(
 
     creds, tenant = await get_google_creds(tenant_id)
     calendar_id = tenant.google_calendar_id or "primary"
-    svc = await asyncio.to_thread(build, "calendar", "v3", credentials=creds)
+    svc = await asyncio.to_thread(
+        build, "calendar", "v3", credentials=creds, cache_discovery=False
+    )
 
     try:
         existing = await asyncio.to_thread(
@@ -254,7 +262,9 @@ async def cancel_appointment(
 
     creds, tenant = await get_google_creds(tenant_id)
     calendar_id = tenant.google_calendar_id or "primary"
-    svc = await asyncio.to_thread(build, "calendar", "v3", credentials=creds)
+    svc = await asyncio.to_thread(
+        build, "calendar", "v3", credentials=creds, cache_discovery=False
+    )
 
     try:
         await asyncio.to_thread(

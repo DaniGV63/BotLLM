@@ -2,7 +2,7 @@
 
 import asyncio
 import uuid
-from datetime import timezone
+from datetime import datetime, timezone
 
 import structlog
 from google.auth.transport.requests import Request
@@ -17,16 +17,27 @@ from app.models.tenant import Tenant
 logger = structlog.get_logger()
 
 GOOGLE_TOKEN_URI = "https://oauth2.googleapis.com/token"
-GOOGLE_SCOPES = [
-    "https://www.googleapis.com/auth/calendar",
-    "https://www.googleapis.com/auth/gmail.send",
-]
+
+
+def _to_naive_utc(dt: datetime) -> datetime:
+    """Convierte a naive UTC (lo que google-auth espera internamente)."""
+    if dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
+
+
+def _to_aware_utc(dt: datetime) -> datetime:
+    """Convierte a aware UTC (lo que PostgreSQL TIMESTAMPTZ espera)."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 async def get_google_creds(tenant_id: uuid.UUID) -> tuple[Credentials, Tenant]:
     """Devuelve credenciales OAuth2 validas para el tenant.
 
-    Refresca el access_token si ha expirado y persiste el nuevo en BD.
+    Refresca el access_token si ha expirado y persiste tokens actualizados.
+    Maneja rotacion de refresh_token de Google.
 
     Returns:
         (Credentials, Tenant) — credenciales listas para usar + objeto tenant.
@@ -55,37 +66,32 @@ async def get_google_creds(tenant_id: uuid.UUID) -> tuple[Credentials, Tenant]:
         token_uri=GOOGLE_TOKEN_URI,
         client_id=settings.GOOGLE_CLIENT_ID,
         client_secret=settings.GOOGLE_CLIENT_SECRET,
-        scopes=GOOGLE_SCOPES,
     )
 
-    # Restaurar expiry si esta guardado en BD
+    # Restaurar expiry como naive UTC (google-auth compara con utcnow() naive)
     if tenant.google_token_expiry:
-        expiry = tenant.google_token_expiry
-        if expiry.tzinfo is None:
-            expiry = expiry.replace(tzinfo=timezone.utc)
-        creds.expiry = expiry
+        creds.expiry = _to_naive_utc(tenant.google_token_expiry)
 
-    # Refrescar si expirado
-    if not creds.valid:
+    # Refrescar si expirado o sin expiry (primera vez tras subir tokens)
+    if not creds.valid or creds.expiry is None:
         log.info("google_token_refresh_start")
         await asyncio.to_thread(creds.refresh, Request())
         log.info("google_token_refreshed")
 
-        # Persistir nuevo token
+        # Persistir tokens actualizados (incluido refresh_token por rotacion)
         async with SessionLocal() as session:
             result = await session.execute(
                 select(Tenant).where(Tenant.id == tenant_id)
             )
             t = result.scalar_one()
             t.google_access_token = encrypt(creds.token)
+            if creds.refresh_token:
+                t.google_refresh_token = encrypt(creds.refresh_token)
             if creds.expiry:
-                expiry = creds.expiry
-                if expiry.tzinfo is None:
-                    expiry = expiry.replace(tzinfo=timezone.utc)
-                t.google_token_expiry = expiry
+                t.google_token_expiry = _to_aware_utc(creds.expiry)
             await session.commit()
 
-        # Devolver tenant actualizado (refrescar objeto)
+        # Refrescar objeto tenant para el caller
         async with SessionLocal() as session:
             result = await session.execute(
                 select(Tenant).where(Tenant.id == tenant_id)

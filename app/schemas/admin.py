@@ -38,6 +38,7 @@ class TenantUpdate(BaseModel):
     nombre_negocio: str | None = None
     email_notificaciones: str | None = None
     bot_activo: bool | None = None
+    whatsapp_token: str | None = None
     google_calendar_id: str | None = None
     google_access_token: str | None = None
     google_refresh_token: str | None = None

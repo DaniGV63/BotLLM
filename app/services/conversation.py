@@ -4,7 +4,7 @@ import json
 import uuid
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.redis import get_redis
@@ -152,6 +152,12 @@ async def reset_conversation(
     # Reusar fila (UniqueConstraint impide crear nueva para mismo tenant+phone)
     conversation.nombre_paciente = None
     conversation.estado = ConversationState.ACTIVA.value
+    await db.flush()
+
+    # Borrar mensajes de PG para que no se reconstruya el historial antiguo
+    await db.execute(
+        delete(Message).where(Message.conversation_id == conversation.id)
+    )
     await db.flush()
 
     # Limpiar cache Redis

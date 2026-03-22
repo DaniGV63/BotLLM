@@ -54,7 +54,7 @@ async def send_notification_email(
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
     gmail_service = await asyncio.to_thread(
-        build, "gmail", "v1", credentials=creds
+        build, "gmail", "v1", credentials=creds, cache_discovery=False
     )
 
     def _sync_send():

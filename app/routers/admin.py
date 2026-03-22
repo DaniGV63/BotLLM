@@ -126,7 +126,7 @@ async def update_tenant(
 ) -> TenantRead:
     """Actualiza campos editables del tenant."""
     updates = body.model_dump(exclude_unset=True)
-    encrypted_fields = {"google_access_token", "google_refresh_token"}
+    encrypted_fields = {"whatsapp_token", "google_access_token", "google_refresh_token"}
 
     for field, value in updates.items():
         if field in encrypted_fields:
