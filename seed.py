@@ -1,6 +1,7 @@
 """Seed: crea el primer tenant en la base de datos."""
 
 import asyncio
+import os
 import uuid
 
 from sqlalchemy import select
@@ -10,7 +11,7 @@ from app.core.security import hash_password
 from app.models.tenant import Tenant
 
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "admin_temporal_2024"
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin_temporal_2024")
 
 PRIMER_TENANT = {
     "slug": "fisio-cliente",
