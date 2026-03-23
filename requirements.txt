@@ -18,3 +18,4 @@ structlog
 ruff
 pytest
 pytest-asyncio
+fpdf2

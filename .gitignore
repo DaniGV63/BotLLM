@@ -1,32 +1,43 @@
-# Entornos virtuales
-.venv/
-venv/
-env/
-
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
+*.pyd
+.Python
 *.egg-info/
 dist/
 build/
+.eggs/
 
-# Variables de entorno
+# Entornos virtuales
 .env
-.env.prod
+.venv
+env/
+venv/
+ENV/
 
-# Ruff
-.ruff_cache/
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
+# Variables de entorno (excepto ejemplo)
+.env.*
+!.env.example
 
 # Logs
 *.log
+logs/
 
-# OS
-Thumbs.db
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
 .DS_Store
+
+# PDFs generados (binarios, no comitear)
+*.pdf
+
+# Archivos temporales
+*.tmp
+*.bak
+
+# Scripts de utilidad temporales
+_write_admin_html.py
+_check_users.py

@@ -54,7 +54,7 @@ BotLLM/
 
 ## REGLAS INQUEBRANTABLES
 
-1. **Ningún archivo > 300 líneas** — refactorizar si crece
+1. **MUY RECOMENDABLE no superar 300 líneas por archivo de programación** (`.py`, `.js`, `.ts`, etc.) — refactorizar si crece. Superar puntualmente está permitido si la alternativa rompe la cohesión del módulo, pero nunca superar 400 líneas bajo ningún concepto. Esta regla NO aplica a archivos de markup/template (`.html`, `.css`, `.md`).
 2. **LLM singleton** por provider en llm_client.py
 3. **PG es fuente de verdad** — PG primero, Redis después
 4. **Estados como Enum** — ACTIVA / DESPEDIDA, nunca strings sueltos
