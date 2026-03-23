@@ -28,7 +28,7 @@
 | Domingo | Cerrado |
 
 ## Mutuas aceptadas
-Actualmente trabajamos de forma 100% privada para garantizar el tiempo y la calidad de cada sesión. No tenemos mutuas
+Solo realizamos consultas privadas, no tenemos mutuas ni seguros. ¿Quiere pedir una cita?
 
 ## Política de cancelación
 Las citas se pueden cancelar o modificar sin coste avisando con al menos 24 horas de antelación. Las cancelaciones con menos de 24 horas de margen, o la no asistencia, conllevarán el cobro del 50% del importe de la sesión reservada.
