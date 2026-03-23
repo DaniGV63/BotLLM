@@ -275,3 +275,5 @@ async def cancel_appointment(
     except Exception as e:
         log.error("cancel_appointment_error", event_id=event_id, error=str(e))
         return False
+
+

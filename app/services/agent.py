@@ -8,6 +8,13 @@ from zoneinfo import ZoneInfo
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.redis import acquire_lock
+from app.models.tenant import Tenant
+from app.services.appointment_utils import (
+    count_active_appointments,
+    format_slot_conflict_message,
+    slot_is_available,
+)
 from app.services.calendar_service import (
     cancel_appointment,
     create_appointment,
@@ -40,14 +47,12 @@ CONFIRMATION_WORDS = {
     "perfecto", "correcto", "confirmar", "claro", "venga", "dale",
 }
 
-NEGATION_WORDS = {
-    "no", "cancelar", "espera", "para", "cambiar", "anular", "mejor no",
-}
+NEGATION_WORDS = {"no", "cancelar", "espera", "para", "cambiar", "anular", "mejor no"}
 
-_DAY_NAMES_ES = [
-    "lunes", "martes", "miercoles", "jueves",
-    "viernes", "sabado", "domingo",
-]
+MAX_CITAS_ACTIVAS = 5
+MAX_CITAS_MSG = "Ya tienes varias citas agendadas. Si necesitas otra, contacta con la clinica."
+
+_DAY_NAMES_ES = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
 
 _MONTH_NAMES_ES = [
     "", "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -79,38 +84,28 @@ def _is_expired(conversation) -> bool:
 
 
 def user_confirmed(message: str) -> bool:
-    """Safety net: verifica si el usuario confirmo una accion."""
     words = set(message.lower().split())
-    has_confirm = bool(words & CONFIRMATION_WORDS)
-    has_negation = bool(words & NEGATION_WORDS)
-    return has_confirm and not has_negation
+    return bool(words & CONFIRMATION_WORDS) and not bool(words & NEGATION_WORDS)
 
 
-async def _execute_action(
-    action: dict, tenant_id: uuid.UUID, wa_phone: str
-) -> None:
-    """Ejecuta una accion de Calendar."""
-    action_type = action["type"]
-
-    if action_type == "create":
+async def _execute_action(action: dict, tenant_id: uuid.UUID, wa_phone: str) -> None:
+    t = action["type"]
+    if t == "create":
         await create_appointment(
-            tenant_id=tenant_id,
-            phone=wa_phone,
+            tenant_id=tenant_id, phone=wa_phone,
             client_name=action.get("client_name", ""),
             datetime_iso=action.get("datetime", ""),
             duration_minutes=action.get("duration", 60),
             service=action.get("service", ""),
         )
-    elif action_type == "modify":
+    elif t == "modify":
         await modify_appointment(
-            tenant_id=tenant_id,
-            event_id=action.get("event_id", ""),
+            tenant_id=tenant_id, event_id=action.get("event_id", ""),
             new_datetime_iso=action.get("new_datetime", ""),
         )
-    elif action_type == "cancel":
+    elif t == "cancel":
         await cancel_appointment(
-            tenant_id=tenant_id,
-            event_id=action.get("event_id", ""),
+            tenant_id=tenant_id, event_id=action.get("event_id", ""),
         )
 
 
@@ -153,6 +148,8 @@ async def handle_message(
         log.info("intent_result", intent=intent)
 
         # 5. Preparar contexto segun intencion
+        _t = await db.get(Tenant, tenant_id)
+        max_citas = (_t.max_citas_activas if _t else None) or MAX_CITAS_ACTIVAS
         context: dict = {
             "business_info": load_prompt("negocio.md"),
             "current_datetime": _format_datetime_es(_now_madrid()),
@@ -161,6 +158,9 @@ async def handle_message(
         }
 
         if intent == "agendar_cita":
+            if (await count_active_appointments(tenant_id, wa_phone)) >= max_citas:
+                await send_text(tenant_id, wa_phone, MAX_CITAS_MSG, db)
+                return
             context["free_slots"] = await get_free_slots(tenant_id)
         elif intent in ("cancelar_cita", "modificar_cita"):
             context["appointment"] = await get_appointment_by_phone(
@@ -197,26 +197,45 @@ async def handle_message(
 
             if action_type in ("create", "modify", "cancel"):
                 if user_confirmed(message_text):
-                    try:
-                        await _execute_action(action, tenant_id, wa_phone)
-                        action_executed = action_type
-                        log.info("action_executed", action=action_type)
-                    except Exception as e:
-                        log.error(
-                            "action_error",
-                            action=action_type,
-                            error=str(e),
-                        )
-                        reply_text = (
-                            "Disculpa, ha habido un problema al procesar "
-                            "tu solicitud. He avisado a la clinica."
-                        )
-                        await send_notification_email(
-                            tenant_id,
-                            conversation.nombre_paciente,
-                            wa_phone,
-                            f"Error en {action_type}",
-                        )
+                    # 2.2 Idempotencia: evita ejecucion duplicada por retry de Meta
+                    action_lock_key = f"action_lock:{tenant_id}:{wa_phone}"
+                    if not await acquire_lock(action_lock_key, ttl=30):
+                        log.warning("action_skipped_duplicate", action=action_type)
+                    else:
+                        execute = True
+                        # 2.3 Race condition: re-validar slot justo antes de crear
+                        if action_type == "create":
+                            dt_iso = action.get("datetime", "")
+                            slot_key = f"slot_lock:{tenant_id}:{dt_iso}"
+                            if not await acquire_lock(slot_key, ttl=60):
+                                log.warning("slot_concurrent", datetime=dt_iso)
+                                reply_text = format_slot_conflict_message(
+                                    await get_free_slots(tenant_id)
+                                )
+                                execute = False
+                            else:
+                                fresh = await get_free_slots(tenant_id)
+                                if not slot_is_available(dt_iso, fresh):
+                                    log.warning("slot_taken", datetime=dt_iso)
+                                    reply_text = format_slot_conflict_message(fresh)
+                                    execute = False
+                        if execute:
+                            try:
+                                await _execute_action(action, tenant_id, wa_phone)
+                                action_executed = action_type
+                                log.info("action_executed", action=action_type)
+                            except Exception as e:
+                                log.error("action_error", action=action_type, error=str(e))
+                                reply_text = (
+                                    "Disculpa, ha habido un problema al procesar "
+                                    "tu solicitud. He avisado a la clinica."
+                                )
+                                await send_notification_email(
+                                    tenant_id,
+                                    conversation.nombre_paciente,
+                                    wa_phone,
+                                    f"Error en {action_type}",
+                                )
                 else:
                     log.warning("safety_net_triggered", action=action_type)
 

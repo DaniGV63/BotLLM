@@ -69,3 +69,38 @@ async def send_notification_email(
     except Exception as e:
         log.error("send_notification_email_error", error=str(e))
         return False
+
+
+async def send_bot_status_email(tenant_id: uuid.UUID, activated: bool) -> None:
+    """Notifica al fisio que el bot ha sido activado o desactivado."""
+    try:
+        creds, tenant = await get_google_creds(tenant_id)
+    except ValueError:
+        return
+
+    status = "activado" if activated else "desactivado"
+    body_text = (
+        "Tu bot de WhatsApp ha sido activado.\n\n"
+        "A partir de ahora, el bot respondera automaticamente a tus pacientes."
+        if activated else
+        "Tu bot de WhatsApp ha sido desactivado.\n\n"
+        "Los mensajes llegaran a tu WhatsApp Business pero el bot no respondera. "
+        "Recuerda responder manualmente."
+    )
+    msg = MIMEText(body_text, "plain", "utf-8")
+    msg["To"] = tenant.email_notificaciones
+    msg["Subject"] = f"[BotLLM] Bot {status}"
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+
+    gmail_service = await asyncio.to_thread(
+        build, "gmail", "v1", credentials=creds, cache_discovery=False
+    )
+    try:
+        await asyncio.to_thread(
+            gmail_service.users().messages().send(
+                userId="me", body={"raw": raw}
+            ).execute
+        )
+        logger.info("bot_status_email_sent", status=status)
+    except Exception as e:
+        logger.error("bot_status_email_error", error=str(e))

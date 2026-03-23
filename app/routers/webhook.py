@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import SessionLocal, get_db
-from app.core.redis import get_redis
+from app.core.redis import check_rate_limit, get_redis
 from app.core.security import decrypt, validate_meta_signature
 from app.models.message import Message
 from app.models.tenant import Tenant
@@ -113,12 +113,23 @@ async def receive_webhook(
     elif not app_secret:
         log.warning("no_app_secret_configured_skipping_hmac")
 
+    # --- Bot inactivo: ignorar sin responder ---
+    if not tenant.bot_activo:
+        log.info("bot_inactive_message_ignored")
+        return {"status": "ok"}
+
     # --- Deduplicar via Redis (TTL 5 min) ---
     redis = await get_redis()
     dedup_key = f"dedup:{wa_message_id}"
     was_set = await redis.set(dedup_key, "1", nx=True, ex=300)
     if not was_set:
         log.info("duplicate_message")
+        return {"status": "ok"}
+
+    # --- Rate limiting por paciente ---
+    rate_key = f"rate:{tenant.id}:{parsed['wa_phone']}"
+    if await check_rate_limit(rate_key, limit=tenant.rate_limit_per_minute or 10):
+        log.warning("rate_limit_exceeded", wa_phone=parsed["wa_phone"])
         return {"status": "ok"}
 
     # --- Encolar procesamiento en background ---

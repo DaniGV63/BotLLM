@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, Text, func
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -44,12 +44,12 @@ class Tenant(Base):
         Boolean, nullable=False, server_default="true"
     )
 
-    # Admin (Fase 5)
-    admin_username: Mapped[str | None] = mapped_column(
-        String(100), unique=True, nullable=True
+    # Limites operacionales
+    rate_limit_per_minute: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="10"
     )
-    admin_password_hash: Mapped[str | None] = mapped_column(
-        String(200), nullable=True
+    max_citas_activas: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="5"
     )
 
     # Timestamps
