@@ -1,5 +1,7 @@
-"""Router del panel admin: login JWT + CRUD tenant + conversaciones."""
+"""Router del panel admin: login JWT + tenant endpoints + impersonación."""
 
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 import structlog
@@ -11,11 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import (
     create_access_token,
-    decrypt,
+    decode_access_token,
     encrypt,
     verify_password,
-    decode_access_token,
 )
+from app.models.admin_user import AdminRole, AdminUser
 from app.models.conversation import Conversation
 from app.models.message import Message
 from app.models.tenant import Tenant
@@ -26,59 +28,107 @@ from app.schemas.admin import (
     LoginRequest,
     LoginResponse,
     MessageRead,
+    MetricsResponse,
     TenantRead,
     TenantUpdate,
 )
+from app.services.email_service import send_bot_status_email
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 logger = structlog.get_logger()
 
+# Campos editables solo por super admin
+_SUPER_ONLY_FIELDS = {
+    "whatsapp_token",
+    "google_calendar_id",
+    "google_access_token",
+    "google_refresh_token",
+    "google_token_expiry",
+}
 
-# --- Dependencia de autenticación ---
+
+# --- Token data ---
 
 
-async def get_current_tenant(
+@dataclass
+class TokenData:
+    user_id: UUID
+    role: str
+    tenant_id: UUID | None
+
+
+# --- Dependencias de autenticación ---
+
+
+async def get_current_user(
     authorization: str = Header(...),
-    db: AsyncSession = Depends(get_db),
-) -> Tenant:
-    """Extrae tenant del JWT en el header Authorization."""
+) -> TokenData:
+    """Decodifica el JWT y retorna los datos del usuario."""
     try:
         scheme, _, token = authorization.partition(" ")
         if scheme.lower() != "bearer" or not token:
             raise HTTPException(status_code=401, detail="Token inválido")
 
         payload = decode_access_token(token)
-        tenant_id = payload.get("sub")
-        if not tenant_id:
+        user_id = payload.get("sub")
+        role = payload.get("role")
+        tenant_id_str = payload.get("tenant_id")
+
+        if not user_id or not role:
             raise HTTPException(status_code=401, detail="Token inválido")
 
-        result = await db.execute(
-            select(Tenant).where(Tenant.id == UUID(tenant_id))
+        return TokenData(
+            user_id=UUID(user_id),
+            role=role,
+            tenant_id=UUID(tenant_id_str) if tenant_id_str else None,
         )
-        tenant = result.scalar_one_or_none()
-        if not tenant:
-            raise HTTPException(status_code=401, detail="Tenant no encontrado")
-
-        return tenant
     except JWTError:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
     except ValueError:
         raise HTTPException(status_code=401, detail="Token inválido")
 
 
+async def require_super_admin(
+    user: TokenData = Depends(get_current_user),
+) -> TokenData:
+    """Solo permite acceso a super admins."""
+    if user.role != AdminRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Acceso denegado: se requiere super admin")
+    return user
+
+
+async def require_tenant_scope(
+    user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Tenant:
+    """Resuelve el tenant activo desde el token. Válido para tenant_admin y super_admin impersonando."""
+    if not user.tenant_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Sin tenant activo. Selecciona un tenant desde el panel de Super Admin.",
+        )
+    result = await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+    return tenant
+
+
+# --- Helpers ---
+
+
 def _tenant_to_read(tenant: Tenant) -> TenantRead:
-    """Convierte modelo Tenant a schema TenantRead (sin datos sensibles)."""
     return TenantRead(
         id=tenant.id,
         slug=tenant.slug,
         nombre_negocio=tenant.nombre_negocio,
         email_notificaciones=tenant.email_notificaciones,
         bot_activo=tenant.bot_activo,
+        rate_limit_per_minute=tenant.rate_limit_per_minute,
+        max_citas_activas=tenant.max_citas_activas,
         google_calendar_id=tenant.google_calendar_id,
         google_token_expiry=tenant.google_token_expiry,
-        has_google_credentials=bool(
-            tenant.google_access_token and tenant.google_refresh_token
-        ),
+        has_google_credentials=bool(tenant.google_access_token and tenant.google_refresh_token),
         created_at=tenant.created_at,
     )
 
@@ -91,42 +141,77 @@ async def login(
     body: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> LoginResponse:
-    """Autentica admin y devuelve JWT."""
+    """Autentica admin o super admin y devuelve JWT con role + tenant_id."""
     result = await db.execute(
-        select(Tenant).where(Tenant.admin_username == body.username)
+        select(AdminUser).where(AdminUser.username == body.username)
     )
+    user = result.scalar_one_or_none()
+
+    if not user or not verify_password(body.password, user.password_hash):
+        logger.warning("admin_login_failed", username=body.username)
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+
+    token = create_access_token({
+        "sub": str(user.id),
+        "role": user.role,
+        "tenant_id": str(user.tenant_id) if user.tenant_id else None,
+    })
+    logger.info("admin_login_success", user_id=str(user.id), role=user.role)
+    return LoginResponse(
+        access_token=token,
+        role=user.role,
+        tenant_id=user.tenant_id,
+    )
+
+
+@router.post("/impersonate/{tenant_id}", response_model=LoginResponse)
+async def impersonate_tenant(
+    tenant_id: UUID,
+    user: TokenData = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+) -> LoginResponse:
+    """Super admin obtiene token scoped a un tenant para gestionarlo directamente."""
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
 
-    if not tenant or not tenant.admin_password_hash:
-        logger.warning("admin_login_failed", username=body.username)
-        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
-
-    if not verify_password(body.password, tenant.admin_password_hash):
-        logger.warning("admin_login_failed", username=body.username)
-        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
-
-    token = create_access_token({"sub": str(tenant.id)})
-    logger.info("admin_login_success", tenant_id=str(tenant.id))
-    return LoginResponse(access_token=token)
+    token = create_access_token({
+        "sub": str(user.user_id),
+        "role": AdminRole.SUPER_ADMIN,
+        "tenant_id": str(tenant_id),
+    })
+    logger.info("super_admin_impersonating", user_id=str(user.user_id), tenant_id=str(tenant_id))
+    return LoginResponse(
+        access_token=token,
+        role=AdminRole.SUPER_ADMIN,
+        tenant_id=tenant_id,
+    )
 
 
 @router.get("/tenant", response_model=TenantRead)
 async def get_tenant(
-    tenant: Tenant = Depends(get_current_tenant),
+    tenant: Tenant = Depends(require_tenant_scope),
 ) -> TenantRead:
-    """Devuelve datos del tenant (sin campos sensibles)."""
+    """Devuelve datos del tenant activo."""
     return _tenant_to_read(tenant)
 
 
 @router.put("/tenant", response_model=TenantRead)
 async def update_tenant(
     body: TenantUpdate,
-    tenant: Tenant = Depends(get_current_tenant),
+    tenant: Tenant = Depends(require_tenant_scope),
+    user: TokenData = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TenantRead:
-    """Actualiza campos editables del tenant."""
+    """Actualiza campos del tenant. Tenant admin solo puede editar campos básicos."""
     updates = body.model_dump(exclude_unset=True)
+
+    if user.role != AdminRole.SUPER_ADMIN:
+        updates = {k: v for k, v in updates.items() if k not in _SUPER_ONLY_FIELDS}
+
     encrypted_fields = {"whatsapp_token", "google_access_token", "google_refresh_token"}
+    old_bot_activo = tenant.bot_activo
 
     for field, value in updates.items():
         if field in encrypted_fields:
@@ -137,11 +222,14 @@ async def update_tenant(
 
     await db.commit()
     await db.refresh(tenant)
-    logger.info(
-        "tenant_updated",
-        tenant_id=str(tenant.id),
-        fields=list(updates.keys()),
-    )
+    logger.info("tenant_updated", tenant_id=str(tenant.id), fields=list(updates.keys()))
+
+    if "bot_activo" in updates and tenant.bot_activo != old_bot_activo:
+        try:
+            await send_bot_status_email(tenant.id, tenant.bot_activo)
+        except Exception:
+            logger.warning("bot_status_email_failed", tenant_id=str(tenant.id))
+
     return _tenant_to_read(tenant)
 
 
@@ -149,13 +237,11 @@ async def update_tenant(
 async def list_conversations(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    tenant: Tenant = Depends(get_current_tenant),
+    tenant: Tenant = Depends(require_tenant_scope),
     db: AsyncSession = Depends(get_db),
 ) -> ConversationListResponse:
     """Lista conversaciones recientes del tenant con paginación."""
-    base_filter = select(Conversation).where(
-        Conversation.tenant_id == tenant.id
-    )
+    base_filter = select(Conversation).where(Conversation.tenant_id == tenant.id)
 
     count_result = await db.execute(
         select(func.count()).select_from(base_filter.subquery())
@@ -194,7 +280,7 @@ async def list_conversations(
 )
 async def get_conversation_messages(
     conversation_id: UUID,
-    tenant: Tenant = Depends(get_current_tenant),
+    tenant: Tenant = Depends(require_tenant_scope),
     db: AsyncSession = Depends(get_db),
 ) -> ConversationDetailResponse:
     """Devuelve mensajes de una conversación del tenant."""
@@ -236,4 +322,48 @@ async def get_conversation_messages(
             )
             for m in messages
         ],
+    )
+
+
+@router.get("/metrics", response_model=MetricsResponse)
+async def get_metrics(
+    tenant: Tenant = Depends(require_tenant_scope),
+    db: AsyncSession = Depends(get_db),
+) -> MetricsResponse:
+    """Métricas de actividad del tenant."""
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    week_ago, month_start = today - timedelta(days=7), today.replace(day=1)
+    tid = tenant.id
+
+    async def _cnt(*where):
+        r = await db.execute(select(func.count(Message.id)).where(*where))
+        return r.scalar() or 0
+
+    msgs_hoy = await _cnt(Message.tenant_id == tid, Message.role == "user", Message.created_at >= today)
+    msgs_sem = await _cnt(Message.tenant_id == tid, Message.role == "user", Message.created_at >= week_ago)
+    citas = await _cnt(Message.tenant_id == tid, Message.action_executed == "create", Message.created_at >= month_start)
+    canceladas = await _cnt(Message.tenant_id == tid, Message.action_executed == "cancel", Message.created_at >= month_start)
+    derivadas = await _cnt(Message.tenant_id == tid, Message.action_executed == "derivar", Message.created_at >= month_start)
+
+    avg_r = await db.execute(
+        select(func.avg(Message.processing_ms)).where(
+            Message.tenant_id == tid,
+            Message.processing_ms.isnot(None),
+            Message.created_at >= week_ago,
+        )
+    )
+    act_r = await db.execute(
+        select(func.count()).select_from(Conversation).where(
+            Conversation.tenant_id == tid, Conversation.estado == "ACTIVA"
+        )
+    )
+    avg_val = avg_r.scalar()
+    return MetricsResponse(
+        mensajes_hoy=msgs_hoy,
+        mensajes_semana=msgs_sem,
+        citas_agendadas_mes=citas,
+        citas_canceladas_mes=canceladas,
+        derivaciones_mes=derivadas,
+        avg_processing_ms=int(avg_val) if avg_val is not None else None,
+        conversaciones_activas=act_r.scalar() or 0,
     )

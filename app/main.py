@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.core.redis import close_redis
 from app.routers.admin import router as admin_router
+from app.routers.superadmin import router as superadmin_router
 from app.routers.webhook import router as webhook_router
 
 
@@ -38,7 +39,7 @@ def setup_logging() -> None:
 async def lifespan(app: FastAPI):
     setup_logging()
     logger = structlog.get_logger()
-    logger.info("botllm_started", version="1.0.1")
+    logger.info("botllm_started", version="1.1.0")
     yield
     await close_redis()
     logger.info("botllm_stopped")
@@ -46,13 +47,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="BotLLM",
-    version="1.0.1",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
 
 app.include_router(webhook_router)
 app.include_router(admin_router)
+app.include_router(superadmin_router)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 

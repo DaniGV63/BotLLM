@@ -1,4 +1,4 @@
-"""Seed: crea el primer tenant en la base de datos."""
+"""Seed: crea tenant demo + super admin + tenant admin inicial."""
 
 import asyncio
 import os
@@ -8,10 +8,14 @@ from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.core.security import hash_password
+from app.models.admin_user import AdminRole, AdminUser
 from app.models.tenant import Tenant
 
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin_temporal_2024")
+SUPER_ADMIN_USERNAME = os.environ.get("SUPER_ADMIN_USERNAME", "superadmin")
+SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "superadmin_temporal_2024")
+
+TENANT_ADMIN_USERNAME = os.environ.get("TENANT_ADMIN_USERNAME", "admin")
+TENANT_ADMIN_PASSWORD = os.environ.get("TENANT_ADMIN_PASSWORD", "admin_temporal_2024")
 
 PRIMER_TENANT = {
     "slug": "fisio-cliente",
@@ -20,36 +24,64 @@ PRIMER_TENANT = {
     "whatsapp_phone_number_id": "1023364914199630",
     "whatsapp_verify_token": str(uuid.uuid4()),
     "bot_activo": True,
-    "admin_username": ADMIN_USERNAME,
-    "admin_password_hash": hash_password(ADMIN_PASSWORD),
 }
 
 
 async def seed() -> None:
     async with SessionLocal() as session:
+        # --- Tenant demo ---
         result = await session.execute(
             select(Tenant).where(Tenant.slug == PRIMER_TENANT["slug"])
         )
-        existing = result.scalar_one_or_none()
+        tenant = result.scalar_one_or_none()
 
-        if existing:
-            if not existing.admin_username:
-                existing.admin_username = PRIMER_TENANT["admin_username"]
-                existing.admin_password_hash = PRIMER_TENANT["admin_password_hash"]
-                await session.commit()
-                print(f"Tenant '{existing.slug}' actualizado con credenciales admin.")
-            else:
-                print(f"Tenant '{existing.slug}' ya existe con admin configurado.")
-        else:
+        if not tenant:
             tenant = Tenant(**PRIMER_TENANT)
             session.add(tenant)
             await session.commit()
             await session.refresh(tenant)
             print(f"Tenant creado: slug='{tenant.slug}' id={tenant.id}")
+        else:
+            print(f"Tenant '{tenant.slug}' ya existe (id={tenant.id})")
 
-        print(f"\n  Admin username: {ADMIN_USERNAME}")
-        print(f"  Admin password: {ADMIN_PASSWORD}")
-        print("  IMPORTANTE: Cambia la contrasena por defecto en produccion.\n")
+        # --- Super admin ---
+        sa_result = await session.execute(
+            select(AdminUser).where(AdminUser.username == SUPER_ADMIN_USERNAME)
+        )
+        if not sa_result.scalar_one_or_none():
+            super_admin = AdminUser(
+                tenant_id=None,
+                username=SUPER_ADMIN_USERNAME,
+                password_hash=hash_password(SUPER_ADMIN_PASSWORD),
+                role=AdminRole.SUPER_ADMIN,
+            )
+            session.add(super_admin)
+            await session.commit()
+            print(f"Super admin creado: username='{SUPER_ADMIN_USERNAME}'")
+        else:
+            print(f"Super admin '{SUPER_ADMIN_USERNAME}' ya existe")
+
+        # --- Tenant admin para el tenant demo ---
+        ta_result = await session.execute(
+            select(AdminUser).where(AdminUser.username == TENANT_ADMIN_USERNAME)
+        )
+        if not ta_result.scalar_one_or_none():
+            tenant_admin = AdminUser(
+                tenant_id=tenant.id,
+                username=TENANT_ADMIN_USERNAME,
+                password_hash=hash_password(TENANT_ADMIN_PASSWORD),
+                role=AdminRole.TENANT_ADMIN,
+            )
+            session.add(tenant_admin)
+            await session.commit()
+            print(f"Tenant admin creado: username='{TENANT_ADMIN_USERNAME}' → tenant '{tenant.slug}'")
+        else:
+            print(f"Tenant admin '{TENANT_ADMIN_USERNAME}' ya existe")
+
+    print("\n--- Credenciales ---")
+    print(f"  Super admin:  {SUPER_ADMIN_USERNAME} / {SUPER_ADMIN_PASSWORD}")
+    print(f"  Tenant admin: {TENANT_ADMIN_USERNAME} / {TENANT_ADMIN_PASSWORD}")
+    print("  IMPORTANTE: Cambia las contraseñas por defecto en producción.\n")
 
 
 if __name__ == "__main__":

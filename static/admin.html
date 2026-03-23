@@ -21,21 +21,100 @@
 
 <!-- Dashboard -->
 <div id="dashboard-section" class="hidden">
+
+    <!-- Banner impersonacion -->
+    <div id="impersonation-banner" class="hidden bg-amber-500 text-white text-sm px-6 py-2 flex items-center justify-between">
+        <span>Gestionando: <strong id="banner-tenant-name"></strong></span>
+        <button onclick="stopImpersonating()" class="underline font-medium hover:text-amber-100">&larr; Volver al panel principal</button>
+    </div>
+
     <nav class="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
-        <div><span class="font-bold text-lg">BotLLM</span> <span id="nav-nombre" class="text-gray-500 ml-2"></span></div>
+        <div>
+            <span class="font-bold text-lg">BotLLM</span>
+            <span id="nav-nombre" class="text-gray-500 ml-2"></span>
+            <span id="nav-role-badge" class="ml-2 text-xs font-medium px-2 py-0.5 rounded-full"></span>
+        </div>
         <button onclick="logout()" class="text-red-600 hover:text-red-800 text-sm font-medium">Cerrar sesion</button>
     </nav>
-    <div class="max-w-4xl mx-auto mt-6 px-4">
-        <div class="flex border-b mb-6">
-            <button onclick="showTab('datos')" id="tab-btn-datos" class="px-4 py-2 font-medium text-blue-600 border-b-2 border-blue-600">Datos</button>
-            <button onclick="showTab('google')" id="tab-btn-google" class="px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Google</button>
-            <button onclick="showTab('conversaciones')" id="tab-btn-conversaciones" class="px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Conversaciones</button>
+
+    <div class="max-w-5xl mx-auto mt-6 px-4">
+        <div class="flex border-b mb-6 flex-wrap gap-1">
+            <button onclick="showTab('tenants')" id="tab-btn-tenants" class="hidden px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Tenants</button>
+            <button onclick="showTab('usuarios')" id="tab-btn-usuarios" class="hidden px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Usuarios</button>
+            <button onclick="showTab('datos')" id="tab-btn-datos" class="hidden px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Datos</button>
+            <button onclick="showTab('google')" id="tab-btn-google" class="hidden px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Google</button>
+            <button onclick="showTab('conversaciones')" id="tab-btn-conversaciones" class="hidden px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Conversaciones</button>
+            <button onclick="showTab('dashboard')" id="tab-btn-dashboard" class="hidden px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Dashboard</button>
         </div>
+
         <div id="msg-ok" class="hidden bg-green-100 text-green-700 p-3 rounded mb-4 text-sm"></div>
         <div id="msg-err" class="hidden bg-red-100 text-red-700 p-3 rounded mb-4 text-sm"></div>
 
+        <!-- Tab: Tenants (super admin) -->
+        <div id="tab-tenants" class="hidden">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">Tenants</h2>
+                    <button onclick="showCreateTenantForm()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 font-medium">+ Nuevo tenant</button>
+                </div>
+                <div id="create-tenant-form" class="hidden bg-gray-50 p-4 rounded-lg mb-4 space-y-3">
+                    <h3 class="font-medium text-gray-700">Nuevo tenant</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input id="nt-slug" type="text" placeholder="slug (ej: fisio-madrid)" class="p-2 border rounded text-sm">
+                        <input id="nt-nombre" type="text" placeholder="Nombre del negocio" class="p-2 border rounded text-sm">
+                        <input id="nt-email" type="email" placeholder="Email notificaciones" class="p-2 border rounded text-sm">
+                        <input id="nt-phone-id" type="text" placeholder="WhatsApp Phone Number ID" class="p-2 border rounded text-sm">
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="createTenant()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">Crear</button>
+                        <button onclick="hideCreateTenantForm()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300">Cancelar</button>
+                    </div>
+                </div>
+                <table class="w-full text-sm">
+                    <thead><tr class="border-b text-left text-gray-500">
+                        <th class="py-2 pr-4">Slug</th><th class="py-2 pr-4">Negocio</th>
+                        <th class="py-2 pr-4">Bot</th><th class="py-2 pr-4">Alta</th><th class="py-2"></th>
+                    </tr></thead>
+                    <tbody id="tenants-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab: Usuarios (super admin) -->
+        <div id="tab-usuarios" class="hidden">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">Usuarios admin</h2>
+                    <button onclick="showCreateUserForm()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 font-medium">+ Nuevo usuario</button>
+                </div>
+                <div id="create-user-form" class="hidden bg-gray-50 p-4 rounded-lg mb-4 space-y-3">
+                    <h3 class="font-medium text-gray-700">Nuevo tenant admin</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input id="nu-username" type="text" placeholder="Username" class="p-2 border rounded text-sm">
+                        <input id="nu-password" type="password" placeholder="Contrasena" class="p-2 border rounded text-sm">
+                        <input id="nu-email" type="email" placeholder="Email (opcional)" class="p-2 border rounded text-sm">
+                        <select id="nu-tenant" class="p-2 border rounded text-sm bg-white">
+                            <option value="">Selecciona tenant...</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="createUser()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">Crear</button>
+                        <button onclick="hideCreateUserForm()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300">Cancelar</button>
+                    </div>
+                </div>
+                <table class="w-full text-sm">
+                    <thead><tr class="border-b text-left text-gray-500">
+                        <th class="py-2 pr-4">Username</th><th class="py-2 pr-4">Rol</th>
+                        <th class="py-2 pr-4">Tenant</th><th class="py-2 pr-4">Email</th>
+                        <th class="py-2 pr-4">Alta</th><th class="py-2"></th>
+                    </tr></thead>
+                    <tbody id="users-table"></tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Tab: Datos -->
-        <div id="tab-datos">
+        <div id="tab-datos" class="hidden">
             <div class="bg-white rounded-lg shadow p-6 space-y-4">
                 <h2 class="text-lg font-semibold mb-2">Datos del negocio</h2>
                 <div>
@@ -52,11 +131,21 @@
                         <span class="block w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-all duration-200"></span>
                     </button>
                 </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Mensajes/min (limite rate)</label>
+                        <input id="f-rate-limit" type="number" min="1" max="60" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Max citas activas por paciente</label>
+                        <input id="f-max-citas" type="number" min="1" max="20" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
                 <button onclick="saveDatos()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-medium">Guardar</button>
             </div>
         </div>
 
-        <!-- Tab: Google -->
+        <!-- Tab: Google (solo super admin con tenant scoped) -->
         <div id="tab-google" class="hidden">
             <div class="bg-white rounded-lg shadow p-6 space-y-4">
                 <h2 class="text-lg font-semibold mb-2">Credenciales Google</h2>
@@ -84,7 +173,10 @@
         <!-- Tab: Conversaciones -->
         <div id="tab-conversaciones" class="hidden">
             <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-lg font-semibold mb-4">Conversaciones recientes</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">Conversaciones recientes</h2>
+                    <button onclick="loadConversations(1)" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Refrescar</button>
+                </div>
                 <table class="w-full text-sm">
                     <thead><tr class="border-b text-left text-gray-500">
                         <th class="py-2 pr-4">Telefono</th><th class="py-2 pr-4">Nombre</th>
@@ -96,26 +188,45 @@
             </div>
             <div id="messages-panel" class="hidden mt-4 bg-white rounded-lg shadow p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-semibold">Mensajes — <span id="msg-phone"></span></h3>
+                    <h3 class="font-semibold">Mensajes &mdash; <span id="msg-phone"></span></h3>
                     <button onclick="closeMessages()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
                 </div>
                 <div id="messages-list" class="space-y-3 max-h-96 overflow-y-auto"></div>
             </div>
         </div>
+
+        <!-- Tab: Dashboard -->
+        <div id="tab-dashboard" class="hidden">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="bg-white rounded-lg shadow p-4 text-center"><div class="text-2xl font-bold text-blue-600" id="v-msgs-hoy">&mdash;</div><div class="text-sm text-gray-500">Mensajes hoy</div></div>
+                <div class="bg-white rounded-lg shadow p-4 text-center"><div class="text-2xl font-bold text-green-600" id="v-citas-mes">&mdash;</div><div class="text-sm text-gray-500">Citas este mes</div></div>
+                <div class="bg-white rounded-lg shadow p-4 text-center"><div class="text-2xl font-bold text-yellow-600" id="v-avg-ms">&mdash;</div><div class="text-sm text-gray-500">Resp. media (ms)</div></div>
+                <div class="bg-white rounded-lg shadow p-4 text-center"><div class="text-2xl font-bold text-purple-600" id="v-activas">&mdash;</div><div class="text-sm text-gray-500">Conversaciones activas</div></div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6 text-sm text-gray-600 space-y-1" id="metrics-detail"></div>
+        </div>
+
     </div>
 </div>
 
 <script>
 const API = window.location.origin;
 let token = sessionStorage.getItem('admin_token');
+let userRole = sessionStorage.getItem('admin_role');
+let tenantId = sessionStorage.getItem('admin_tenant_id') || null;
+let superAdminToken = sessionStorage.getItem('super_admin_token') || null;
 let botActivo = false;
+let convRefreshInterval = null;
+let tenantsCache = [];
 
+// ===== API =====
 async function apiCall(method, path, body) {
     const opts = { method, headers: {} };
     if (token) opts.headers['Authorization'] = 'Bearer ' + token;
     if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
     const res = await fetch(API + path, opts);
     if (res.status === 401) { logout(); throw new Error('No autorizado'); }
+    if (res.status === 204) return null;
     if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Error del servidor'); }
     return res.json();
 }
@@ -127,6 +238,7 @@ function showMsg(type, text) {
     setTimeout(() => el.classList.add('hidden'), 4000);
 }
 
+// ===== AUTH =====
 async function login() {
     const user = document.getElementById('login-user').value.trim();
     const pass = document.getElementById('login-pass').value;
@@ -134,26 +246,100 @@ async function login() {
     errEl.classList.add('hidden');
     try {
         const data = await apiCall('POST', '/admin/login', { username: user, password: pass });
-        token = data.access_token; sessionStorage.setItem('admin_token', token); showDashboard();
+        token = data.access_token; userRole = data.role; tenantId = data.tenant_id || null;
+        sessionStorage.setItem('admin_token', token);
+        sessionStorage.setItem('admin_role', userRole);
+        sessionStorage.setItem('admin_tenant_id', tenantId || '');
+        showDashboard();
     } catch (e) { errEl.textContent = e.message; errEl.classList.remove('hidden'); }
 }
 function logout() {
-    token = null; sessionStorage.removeItem('admin_token');
+    token = null; userRole = null; tenantId = null; superAdminToken = null;
+    sessionStorage.clear(); clearInterval(convRefreshInterval);
     document.getElementById('login-section').classList.remove('hidden');
     document.getElementById('dashboard-section').classList.add('hidden');
 }
 
+// ===== IMPERSONACION =====
+async function impersonateTenant(tid, tenantName) {
+    try {
+        const data = await apiCall('POST', '/admin/impersonate/' + tid);
+        superAdminToken = token;
+        sessionStorage.setItem('super_admin_token', superAdminToken);
+        token = data.access_token; userRole = data.role; tenantId = data.tenant_id;
+        sessionStorage.setItem('admin_token', token);
+        sessionStorage.setItem('admin_role', userRole);
+        sessionStorage.setItem('admin_tenant_id', tenantId || '');
+        document.getElementById('banner-tenant-name').textContent = tenantName;
+        document.getElementById('impersonation-banner').classList.remove('hidden');
+        renderTabsForRole(); await loadTenant(); showTab('datos');
+    } catch(e) { showMsg('err', e.message); }
+}
+function stopImpersonating() {
+    token = superAdminToken; superAdminToken = null;
+    userRole = 'super_admin'; tenantId = null;
+    sessionStorage.setItem('admin_token', token);
+    sessionStorage.setItem('admin_role', userRole);
+    sessionStorage.setItem('admin_tenant_id', '');
+    sessionStorage.removeItem('super_admin_token');
+    document.getElementById('impersonation-banner').classList.add('hidden');
+    document.getElementById('nav-nombre').textContent = '';
+    renderTabsForRole(); showTab('tenants'); loadTenants();
+}
+
+// ===== DASHBOARD =====
 async function showDashboard() {
     document.getElementById('login-section').classList.add('hidden');
     document.getElementById('dashboard-section').classList.remove('hidden');
-    await loadTenant(); showTab('datos');
+    if (superAdminToken) document.getElementById('impersonation-banner').classList.remove('hidden');
+    renderTabsForRole();
+    if (userRole === 'super_admin' && !tenantId) {
+        const badge = document.getElementById('nav-role-badge');
+        badge.textContent = 'Super Admin';
+        badge.className = 'ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700';
+        await loadTenants(); showTab('tenants');
+    } else {
+        await loadTenant(); showTab('datos');
+    }
 }
+function renderTabsForRole() {
+    const isSuperOnly = userRole === 'super_admin' && !tenantId;
+    const hasTenant = !!tenantId;
+    const isSuperWithTenant = userRole === 'super_admin' && hasTenant;
+    const show = (id, v) => { const el = document.getElementById('tab-btn-' + id); if (el) el.classList.toggle('hidden', !v); };
+    show('tenants', isSuperOnly); show('usuarios', isSuperOnly);
+    show('datos', hasTenant); show('google', isSuperWithTenant);
+    show('conversaciones', hasTenant); show('dashboard', hasTenant);
+}
+const ALL_TABS = ['tenants','usuarios','datos','google','conversaciones','dashboard'];
+function showTab(name) {
+    ALL_TABS.forEach(t => {
+        document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
+        const btn = document.getElementById('tab-btn-' + t);
+        if (!btn || btn.classList.contains('hidden')) return;
+        btn.classList.remove('text-blue-600','border-b-2','border-blue-600','text-gray-500','hover:text-gray-700');
+        if (t === name) btn.classList.add('text-blue-600','border-b-2','border-blue-600');
+        else btn.classList.add('text-gray-500','hover:text-gray-700');
+    });
+    clearInterval(convRefreshInterval); convRefreshInterval = null;
+    if (name === 'conversaciones') { loadConversations(1); convRefreshInterval = setInterval(() => loadConversations(1), 30000); }
+    if (name === 'dashboard') loadMetrics();
+    if (name === 'tenants') loadTenants();
+    if (name === 'usuarios') loadUsers();
+}
+
+// ===== TENANT DATA =====
 async function loadTenant() {
     const t = await apiCall('GET', '/admin/tenant');
-    document.getElementById('nav-nombre').textContent = '— ' + t.nombre_negocio;
+    document.getElementById('nav-nombre').textContent = '\u2014 ' + t.nombre_negocio;
+    const badge = document.getElementById('nav-role-badge');
+    if (userRole === 'super_admin') { badge.textContent = 'Super Admin'; badge.className = 'ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700'; }
+    else { badge.textContent = 'Tenant Admin'; badge.className = 'ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700'; }
     document.getElementById('f-nombre').value = t.nombre_negocio;
     document.getElementById('f-email').value = t.email_notificaciones;
     botActivo = t.bot_activo; updateBotToggle();
+    document.getElementById('f-rate-limit').value = t.rate_limit_per_minute;
+    document.getElementById('f-max-citas').value = t.max_citas_activas;
     document.getElementById('f-calendar-id').value = t.google_calendar_id || '';
     document.getElementById('f-token-expiry').value = t.google_token_expiry
         ? new Date(t.google_token_expiry).toLocaleString('es-ES') : 'Sin configurar';
@@ -161,31 +347,23 @@ async function loadTenant() {
     s.textContent = t.has_google_credentials ? 'Credenciales configuradas' : 'Sin credenciales Google configuradas';
     s.className = 'text-sm p-3 rounded mb-2 ' + (t.has_google_credentials ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700');
 }
-
-function showTab(name) {
-    ['datos', 'google', 'conversaciones'].forEach(t => {
-        document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
-        const btn = document.getElementById('tab-btn-' + t);
-        btn.className = t === name
-            ? 'px-4 py-2 font-medium text-blue-600 border-b-2 border-blue-600'
-            : 'px-4 py-2 font-medium text-gray-500 hover:text-gray-700';
-    });
-    if (name === 'conversaciones') loadConversations(1);
+function toggleBot() {
+    if (botActivo && !confirm('Desactivar el bot? Los mensajes llegaran pero no se respondera automaticamente.')) return;
+    botActivo = !botActivo; updateBotToggle();
 }
-
-function toggleBot() { botActivo = !botActivo; updateBotToggle(); }
 function updateBotToggle() {
     const btn = document.getElementById('f-bot-toggle'), dot = btn.querySelector('span');
     btn.className = 'w-12 h-6 rounded-full relative transition-colors duration-200 ' + (botActivo ? 'bg-green-500' : 'bg-gray-300');
     dot.style.left = botActivo ? '26px' : '2px';
 }
-
 async function saveDatos() {
     try {
         await apiCall('PUT', '/admin/tenant', {
             nombre_negocio: document.getElementById('f-nombre').value.trim(),
             email_notificaciones: document.getElementById('f-email').value.trim(),
             bot_activo: botActivo,
+            rate_limit_per_minute: parseInt(document.getElementById('f-rate-limit').value) || 10,
+            max_citas_activas: parseInt(document.getElementById('f-max-citas').value) || 5,
         });
         await loadTenant(); showMsg('ok', 'Datos guardados correctamente');
     } catch (e) { showMsg('err', e.message); }
@@ -204,46 +382,147 @@ async function saveGoogle() {
     } catch (e) { showMsg('err', e.message); }
 }
 
+// ===== SUPER ADMIN: TENANTS =====
+async function loadTenants() {
+    try {
+        const data = await apiCall('GET', '/superadmin/tenants');
+        tenantsCache = data.tenants;
+        const tbody = document.getElementById('tenants-table');
+        if (!data.tenants.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">Sin tenants</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.tenants.map(function(t) {
+            const botB = t.bot_activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500';
+            const botTxt = t.bot_activo ? 'Activo' : 'Inactivo';
+            const safeName = t.nombre_negocio.replace(/'/g, '');
+            return '<tr class="border-b hover:bg-gray-50">'
+                + '<td class="py-2 pr-4 font-mono text-xs">' + t.slug + '</td>'
+                + '<td class="py-2 pr-4">' + t.nombre_negocio + '</td>'
+                + '<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs ' + botB + '">' + botTxt + '</span></td>'
+                + '<td class="py-2 pr-4 text-gray-500 text-xs">' + new Date(t.created_at).toLocaleDateString('es-ES') + '</td>'
+                + '<td class="py-2"><button onclick="impersonateTenant(\'' + t.id + '\',\'' + safeName + '\')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Gestionar</button></td>'
+                + '</tr>';
+        }).join('');
+    } catch(e) { showMsg('err', e.message); }
+}
+function showCreateTenantForm() { document.getElementById('create-tenant-form').classList.remove('hidden'); }
+function hideCreateTenantForm() { document.getElementById('create-tenant-form').classList.add('hidden'); }
+async function createTenant() {
+    const slug = document.getElementById('nt-slug').value.trim();
+    const nombre = document.getElementById('nt-nombre').value.trim();
+    const email = document.getElementById('nt-email').value.trim();
+    const phoneId = document.getElementById('nt-phone-id').value.trim();
+    if (!slug || !nombre || !email || !phoneId) { showMsg('err', 'Todos los campos son obligatorios'); return; }
+    try {
+        await apiCall('POST', '/superadmin/tenants', {
+            slug: slug, nombre_negocio: nombre, email_notificaciones: email, whatsapp_phone_number_id: phoneId
+        });
+        hideCreateTenantForm();
+        ['nt-slug','nt-nombre','nt-email','nt-phone-id'].forEach(function(id) { document.getElementById(id).value = ''; });
+        await loadTenants(); showMsg('ok', "Tenant '" + slug + "' creado");
+    } catch(e) { showMsg('err', e.message); }
+}
+
+// ===== SUPER ADMIN: USUARIOS =====
+async function loadUsers() {
+    try {
+        const users = await apiCall('GET', '/superadmin/users');
+        const sel = document.getElementById('nu-tenant');
+        sel.innerHTML = '<option value="">Selecciona tenant...</option>'
+            + tenantsCache.map(function(t) { return '<option value="' + t.id + '">' + t.nombre_negocio + ' (' + t.slug + ')</option>'; }).join('');
+        const tbody = document.getElementById('users-table');
+        if (!users.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-400">Sin usuarios</td></tr>';
+            return;
+        }
+        const tenantMap = {};
+        tenantsCache.forEach(function(t) { tenantMap[t.id] = t.slug; });
+        tbody.innerHTML = users.map(function(u) {
+            const rolB = u.role === 'super_admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
+            const rolTxt = u.role === 'super_admin' ? 'Super Admin' : 'Tenant Admin';
+            const slug = u.tenant_id ? (tenantMap[u.tenant_id] || u.tenant_id.slice(0,8)) : '\u2014';
+            const del = u.role !== 'super_admin'
+                ? '<button onclick="deleteUser(\'' + u.id + '\',\'' + u.username + '\')" class="text-red-500 hover:text-red-700 text-xs">Eliminar</button>'
+                : '<span class="text-gray-300 text-xs">\u2014</span>';
+            return '<tr class="border-b hover:bg-gray-50">'
+                + '<td class="py-2 pr-4 font-medium">' + u.username + '</td>'
+                + '<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs ' + rolB + '">' + rolTxt + '</span></td>'
+                + '<td class="py-2 pr-4 font-mono text-xs">' + slug + '</td>'
+                + '<td class="py-2 pr-4 text-gray-500 text-xs">' + (u.email || '\u2014') + '</td>'
+                + '<td class="py-2 pr-4 text-gray-500 text-xs">' + new Date(u.created_at).toLocaleDateString('es-ES') + '</td>'
+                + '<td class="py-2">' + del + '</td></tr>';
+        }).join('');
+    } catch(e) { showMsg('err', e.message); }
+}
+function showCreateUserForm() {
+    if (!tenantsCache.length) { showMsg('err', 'Carga la lista de tenants primero (tab Tenants)'); return; }
+    document.getElementById('create-user-form').classList.remove('hidden');
+}
+function hideCreateUserForm() { document.getElementById('create-user-form').classList.add('hidden'); }
+async function createUser() {
+    const username = document.getElementById('nu-username').value.trim();
+    const password = document.getElementById('nu-password').value;
+    const email = document.getElementById('nu-email').value.trim();
+    const tid = document.getElementById('nu-tenant').value;
+    if (!username || !password || !tid) { showMsg('err', 'Username, contrasena y tenant son obligatorios'); return; }
+    try {
+        await apiCall('POST', '/superadmin/users', { username: username, password: password, tenant_id: tid, email: email || null });
+        hideCreateUserForm();
+        ['nu-username','nu-password','nu-email'].forEach(function(id) { document.getElementById(id).value = ''; });
+        document.getElementById('nu-tenant').value = '';
+        await loadUsers(); showMsg('ok', "Usuario '" + username + "' creado");
+    } catch(e) { showMsg('err', e.message); }
+}
+async function deleteUser(userId, username) {
+    if (!confirm("Eliminar usuario '" + username + "'? Esta accion no se puede deshacer.")) return;
+    try {
+        await apiCall('DELETE', '/superadmin/users/' + userId);
+        await loadUsers(); showMsg('ok', "Usuario '" + username + "' eliminado");
+    } catch(e) { showMsg('err', e.message); }
+}
+
+// ===== CONVERSACIONES =====
 async function loadConversations(page) {
     try {
-        const data = await apiCall('GET', `/admin/conversations?page=${page}&page_size=15`);
+        const data = await apiCall('GET', '/admin/conversations?page=' + page + '&page_size=15');
         const tbody = document.getElementById('conv-table');
         if (!data.conversations.length) {
             tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">Sin conversaciones</td></tr>';
         } else {
-            tbody.innerHTML = data.conversations.map(c => {
-                const badge = c.estado === 'ACTIVA' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500';
-                return `<tr class="border-b hover:bg-gray-50">
-                    <td class="py-2 pr-4 font-mono">${c.wa_phone}</td>
-                    <td class="py-2 pr-4">${c.nombre_paciente || '—'}</td>
-                    <td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${badge}">${c.estado}</span></td>
-                    <td class="py-2 pr-4 text-gray-500">${new Date(c.ultimo_mensaje_at).toLocaleString('es-ES')}</td>
-                    <td class="py-2"><button onclick="viewMessages('${c.id}','${c.wa_phone}')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Ver</button></td>
-                </tr>`;
+            tbody.innerHTML = data.conversations.map(function(c) {
+                const b = c.estado === 'ACTIVA' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500';
+                return '<tr class="border-b hover:bg-gray-50">'
+                    + '<td class="py-2 pr-4 font-mono">' + c.wa_phone + '</td>'
+                    + '<td class="py-2 pr-4">' + (c.nombre_paciente||'\u2014') + '</td>'
+                    + '<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs font-medium ' + b + '">' + c.estado + '</span></td>'
+                    + '<td class="py-2 pr-4 text-gray-500">' + new Date(c.ultimo_mensaje_at).toLocaleString('es-ES') + '</td>'
+                    + '<td class="py-2"><button onclick="viewMessages(\'' + c.id + '\',\'' + c.wa_phone + '\')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Ver</button></td></tr>';
             }).join('');
         }
         const tp = Math.ceil(data.total / data.page_size) || 1;
-        document.getElementById('conv-pagination').innerHTML = `
-            <span class="text-gray-500">${data.total} conversaciones</span>
-            <div class="space-x-2">
-                <button onclick="loadConversations(${page-1})" ${page<=1?'disabled':''} class="px-3 py-1 rounded border ${page<=1?'text-gray-300':'hover:bg-gray-100'}">Anterior</button>
-                <span class="text-gray-500">${page} / ${tp}</span>
-                <button onclick="loadConversations(${page+1})" ${page>=tp?'disabled':''} class="px-3 py-1 rounded border ${page>=tp?'text-gray-300':'hover:bg-gray-100'}">Siguiente</button>
-            </div>`;
+        document.getElementById('conv-pagination').innerHTML =
+            '<span class="text-gray-500">' + data.total + ' conversaciones</span>'
+            + '<div class="space-x-2">'
+            + '<button onclick="loadConversations(' + (page-1) + ')" ' + (page<=1?'disabled':'') + ' class="px-3 py-1 rounded border ' + (page<=1?'text-gray-300':'hover:bg-gray-100') + '">Anterior</button>'
+            + '<span class="text-gray-500">' + page + ' / ' + tp + '</span>'
+            + '<button onclick="loadConversations(' + (page+1) + ')" ' + (page>=tp?'disabled':'') + ' class="px-3 py-1 rounded border ' + (page>=tp?'text-gray-300':'hover:bg-gray-100') + '">Siguiente</button>'
+            + '</div>';
     } catch (e) { showMsg('err', e.message); }
 }
 async function viewMessages(convId, phone) {
     document.getElementById('msg-phone').textContent = phone;
     try {
-        const data = await apiCall('GET', `/admin/conversations/${convId}/messages`);
+        const data = await apiCall('GET', '/admin/conversations/' + convId + '/messages');
         const list = document.getElementById('messages-list');
-        list.innerHTML = data.messages.map(m => {
-            const isUser = m.role === 'user';
-            return `<div class="flex ${isUser ? 'justify-start' : 'justify-end'}">
-                <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg text-sm ${isUser ? 'bg-gray-200 text-gray-800' : 'bg-blue-600 text-white'}">
-                    <p>${m.content}</p>
-                    <div class="text-xs mt-1 ${isUser ? 'text-gray-400' : 'text-blue-200'}">${new Date(m.created_at).toLocaleTimeString('es-ES')}${m.intent ? ' — '+m.intent : ''}</div>
-                </div></div>`;
+        list.innerHTML = data.messages.map(function(m) {
+            const u = m.role === 'user';
+            return '<div class="flex ' + (u?'justify-start':'justify-end') + '">'
+                + '<div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg text-sm ' + (u?'bg-gray-200 text-gray-800':'bg-blue-600 text-white') + '">'
+                + '<p>' + m.content + '</p>'
+                + '<div class="text-xs mt-1 ' + (u?'text-gray-400':'text-blue-200') + '">'
+                + new Date(m.created_at).toLocaleTimeString('es-ES') + (m.intent?' \u2014 '+m.intent:'')
+                + '</div></div></div>';
         }).join('');
         document.getElementById('messages-panel').classList.remove('hidden');
         list.scrollTop = list.scrollHeight;
@@ -251,7 +530,22 @@ async function viewMessages(convId, phone) {
 }
 function closeMessages() { document.getElementById('messages-panel').classList.add('hidden'); }
 
-if (token) { showDashboard(); }
+// ===== METRICAS =====
+async function loadMetrics() {
+    try {
+        const d = await apiCall('GET', '/admin/metrics');
+        document.getElementById('v-msgs-hoy').textContent = d.mensajes_hoy;
+        document.getElementById('v-citas-mes').textContent = d.citas_agendadas_mes;
+        document.getElementById('v-avg-ms').textContent = d.avg_processing_ms || '\u2014';
+        document.getElementById('v-activas').textContent = d.conversaciones_activas;
+        document.getElementById('metrics-detail').innerHTML =
+            '<p>Mensajes esta semana: <strong>' + d.mensajes_semana + '</strong></p>'
+            + '<p>Cancelaciones este mes: <strong>' + d.citas_canceladas_mes + '</strong> &nbsp;|&nbsp; Derivaciones: <strong>' + d.derivaciones_mes + '</strong></p>';
+    } catch (e) { showMsg('err', e.message); }
+}
+
+// ===== INIT =====
+if (token && userRole) { showDashboard(); }
 </script>
 </body>
 </html>
