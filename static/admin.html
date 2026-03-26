@@ -217,6 +217,7 @@ let tenantId = sessionStorage.getItem('admin_tenant_id') || null;
 let superAdminToken = sessionStorage.getItem('super_admin_token') || null;
 let botActivo = false;
 let convRefreshInterval = null;
+let dashboardRefreshInterval = null;
 let tenantsCache = [];
 
 // ===== SECURITY: HTML ESCAPE =====
@@ -334,8 +335,9 @@ function showTab(name) {
         else btn.classList.add('text-gray-500','hover:text-gray-700');
     });
     clearInterval(convRefreshInterval); convRefreshInterval = null;
-    if (name === 'conversaciones') { loadConversations(1); convRefreshInterval = setInterval(() => loadConversations(1), 5000); }
-    if (name === 'dashboard') loadMetrics();
+    clearInterval(dashboardRefreshInterval); dashboardRefreshInterval = null;
+    if (name === 'conversaciones') { loadConversations(1); convRefreshInterval = setInterval(() => loadConversations(1), 10000); }
+    if (name === 'dashboard') { loadMetrics(); dashboardRefreshInterval = setInterval(() => loadMetrics(), 10000); }
     if (name === 'tenants') loadTenants();
     if (name === 'usuarios') loadUsers();
 }
