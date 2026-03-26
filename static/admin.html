@@ -219,6 +219,18 @@ let botActivo = false;
 let convRefreshInterval = null;
 let tenantsCache = [];
 
+// ===== SECURITY: HTML ESCAPE =====
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, char => map[char]);
+}
+
 // ===== API =====
 async function apiCall(method, path, body) {
     const opts = { method, headers: {} };
@@ -395,13 +407,15 @@ async function loadTenants() {
         tbody.innerHTML = data.tenants.map(function(t) {
             const botB = t.bot_activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500';
             const botTxt = t.bot_activo ? 'Activo' : 'Inactivo';
-            const safeName = t.nombre_negocio.replace(/'/g, '');
+            const escId = escapeHtml(t.id);
+            const escName = escapeHtml(t.nombre_negocio);
+            const escSlug = escapeHtml(t.slug);
             return '<tr class="border-b hover:bg-gray-50">'
-                + '<td class="py-2 pr-4 font-mono text-xs">' + t.slug + '</td>'
-                + '<td class="py-2 pr-4">' + t.nombre_negocio + '</td>'
+                + '<td class="py-2 pr-4 font-mono text-xs">' + escSlug + '</td>'
+                + '<td class="py-2 pr-4">' + escName + '</td>'
                 + '<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs ' + botB + '">' + botTxt + '</span></td>'
                 + '<td class="py-2 pr-4 text-gray-500 text-xs">' + new Date(t.created_at).toLocaleDateString('es-ES') + '</td>'
-                + '<td class="py-2"><button onclick="impersonateTenant(\'' + t.id + '\',\'' + safeName + '\')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Gestionar</button></td>'
+                + '<td class="py-2"><button onclick="impersonateTenant(\'' + escId + '\',\'' + escName + '\')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Gestionar</button></td>'
                 + '</tr>';
         }).join('');
     } catch(e) { showMsg('err', e.message); }
@@ -442,14 +456,17 @@ async function loadUsers() {
             const rolB = u.role === 'super_admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
             const rolTxt = u.role === 'super_admin' ? 'Super Admin' : 'Tenant Admin';
             const slug = u.tenant_id ? (tenantMap[u.tenant_id] || u.tenant_id.slice(0,8)) : '\u2014';
+            const escId = escapeHtml(u.id);
+            const escUsername = escapeHtml(u.username);
+            const escEmail = escapeHtml(u.email || '');
             const del = u.role !== 'super_admin'
-                ? '<button onclick="deleteUser(\'' + u.id + '\',\'' + u.username + '\')" class="text-red-500 hover:text-red-700 text-xs">Eliminar</button>'
+                ? '<button onclick="deleteUser(\'' + escId + '\',\'' + escUsername + '\')" class="text-red-500 hover:text-red-700 text-xs">Eliminar</button>'
                 : '<span class="text-gray-300 text-xs">\u2014</span>';
             return '<tr class="border-b hover:bg-gray-50">'
-                + '<td class="py-2 pr-4 font-medium">' + u.username + '</td>'
+                + '<td class="py-2 pr-4 font-medium">' + escUsername + '</td>'
                 + '<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs ' + rolB + '">' + rolTxt + '</span></td>'
                 + '<td class="py-2 pr-4 font-mono text-xs">' + slug + '</td>'
-                + '<td class="py-2 pr-4 text-gray-500 text-xs">' + (u.email || '\u2014') + '</td>'
+                + '<td class="py-2 pr-4 text-gray-500 text-xs">' + (escEmail || '\u2014') + '</td>'
                 + '<td class="py-2 pr-4 text-gray-500 text-xs">' + new Date(u.created_at).toLocaleDateString('es-ES') + '</td>'
                 + '<td class="py-2">' + del + '</td></tr>';
         }).join('');
@@ -492,12 +509,15 @@ async function loadConversations(page) {
         } else {
             tbody.innerHTML = data.conversations.map(function(c) {
                 const b = c.estado === 'ACTIVA' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500';
+                const escId = escapeHtml(c.id);
+                const escPhone = escapeHtml(c.wa_phone);
+                const escName = escapeHtml(c.nombre_paciente || '');
                 return '<tr class="border-b hover:bg-gray-50">'
-                    + '<td class="py-2 pr-4 font-mono">' + c.wa_phone + '</td>'
-                    + '<td class="py-2 pr-4">' + (c.nombre_paciente||'\u2014') + '</td>'
+                    + '<td class="py-2 pr-4 font-mono">' + escPhone + '</td>'
+                    + '<td class="py-2 pr-4">' + (escName || '\u2014') + '</td>'
                     + '<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs font-medium ' + b + '">' + c.estado + '</span></td>'
                     + '<td class="py-2 pr-4 text-gray-500">' + new Date(c.ultimo_mensaje_at).toLocaleString('es-ES') + '</td>'
-                    + '<td class="py-2"><button onclick="viewMessages(\'' + c.id + '\',\'' + c.wa_phone + '\')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Ver</button></td></tr>';
+                    + '<td class="py-2"><button onclick="viewMessages(\'' + escId + '\',\'' + escPhone + '\')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Ver</button></td></tr>';
             }).join('');
         }
         const tp = Math.ceil(data.total / data.page_size) || 1;
@@ -517,11 +537,13 @@ async function viewMessages(convId, phone) {
         const list = document.getElementById('messages-list');
         list.innerHTML = data.messages.map(function(m) {
             const u = m.role === 'user';
+            const escContent = escapeHtml(m.content);
+            const escIntent = escapeHtml(m.intent || '');
             return '<div class="flex ' + (u?'justify-start':'justify-end') + '">'
                 + '<div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg text-sm ' + (u?'bg-gray-200 text-gray-800':'bg-blue-600 text-white') + '">'
-                + '<p>' + m.content + '</p>'
+                + '<p>' + escContent + '</p>'
                 + '<div class="text-xs mt-1 ' + (u?'text-gray-400':'text-blue-200') + '">'
-                + new Date(m.created_at).toLocaleTimeString('es-ES') + (m.intent?' \u2014 '+m.intent:'')
+                + new Date(m.created_at).toLocaleTimeString('es-ES') + (escIntent ? ' \u2014 ' + escIntent : '')
                 + '</div></div></div>';
         }).join('');
         document.getElementById('messages-panel').classList.remove('hidden');
