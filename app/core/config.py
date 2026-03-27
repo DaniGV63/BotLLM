@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
 
+    # App
+    BASE_URL: str = "http://localhost:8000"
+
     # Logging
     LOG_LEVEL: str = "INFO"
 

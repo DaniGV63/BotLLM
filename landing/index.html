@@ -3,21 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BotLLM — Tu asistente de WhatsApp para fisioterapia</title>
+  <title>Attendoo — Tu asistente de WhatsApp para fisioterapia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .wa-green { background-color: #075E54; }
-    .wa-green-light { background-color: #25D366; }
-    .wa-bubble-out { background-color: #DCF8C6; border-radius: 18px 18px 4px 18px; }
-    .wa-bubble-in  { background-color: #FFFFFF; border-radius: 18px 18px 18px 4px; }
-    .gradient-hero { background: linear-gradient(135deg, #075E54 0%, #128C7E 60%, #25D366 100%); }
-    @media print {
-      .no-print { display: none !important; }
-      body { font-size: 12px; }
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { brand: '#16A34A', accent: '#0D9488', sidebar: '#1F2937' },
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] }
+        }
+      }
     }
-  </style>
+  </script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="/static/attendoo.css">
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
+
+<!-- NAVBAR -->
+<nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
+  <div class="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
+    <span class="font-bold text-gray-900 text-lg tracking-tight">Attendoo</span>
+    <div class="flex items-center gap-4">
+      <a href="#precios" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">Precios</a>
+      <a href="#demo" class="text-sm text-gray-500 hover:text-gray-800 transition-colors">Demo</a>
+      <a href="/static/admin.html" class="bg-green-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-150">Iniciar sesión</a>
+    </div>
+  </div>
+</nav>
 
 <!-- HERO -->
 <section class="gradient-hero text-white py-16 px-6">
@@ -47,21 +63,21 @@
 <!-- BENEFICIOS -->
 <section class="py-14 px-6 bg-white">
   <div class="max-w-4xl mx-auto">
-    <h2 class="text-2xl font-bold text-center mb-2">¿Por qué BotLLM?</h2>
+    <h2 class="text-2xl font-bold text-center mb-2">¿Por qué Attendoo?</h2>
     <p class="text-center text-gray-500 mb-10">Menos trabajo para ti. Más comodidad para tus pacientes.</p>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-      <div class="text-center p-6 rounded-2xl bg-green-50 border border-green-100">
-        <div class="text-4xl mb-3">🕐</div>
+      <div class="text-center p-6 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-teal-200 hover:shadow-md transition-all duration-200">
+        <div class="mb-4 flex justify-center"><i data-lucide="clock" class="w-8 h-8 text-teal-600"></i></div>
         <h3 class="font-bold text-lg mb-2">Disponible 24/7</h3>
         <p class="text-gray-600 text-sm">Los pacientes pueden reservar a las 11 de la noche. Tú duermes, el bot trabaja.</p>
       </div>
-      <div class="text-center p-6 rounded-2xl bg-green-50 border border-green-100">
-        <div class="text-4xl mb-3">📅</div>
+      <div class="text-center p-6 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-teal-200 hover:shadow-md transition-all duration-200">
+        <div class="mb-4 flex justify-center"><i data-lucide="calendar-check" class="w-8 h-8 text-teal-600"></i></div>
         <h3 class="font-bold text-lg mb-2">Sin no-shows</h3>
         <p class="text-gray-600 text-sm">Recordatorio automático 24h antes de cada cita. Menos olvidos, menos huecos vacíos.</p>
       </div>
-      <div class="text-center p-6 rounded-2xl bg-green-50 border border-green-100">
-        <div class="text-4xl mb-3">📱</div>
+      <div class="text-center p-6 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-teal-200 hover:shadow-md transition-all duration-200">
+        <div class="mb-4 flex justify-center"><i data-lucide="smartphone" class="w-8 h-8 text-teal-600"></i></div>
         <h3 class="font-bold text-lg mb-2">Sin apps nuevas</h3>
         <p class="text-gray-600 text-sm">Funciona en el WhatsApp que ya usan todos. Cero fricción para el paciente.</p>
       </div>
@@ -74,29 +90,29 @@
   <div class="max-w-4xl mx-auto">
     <h2 class="text-2xl font-bold text-center mb-10">¿Qué puede hacer el bot?</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="flex gap-4 items-start bg-white p-5 rounded-xl shadow-sm">
-        <span class="text-2xl">✅</span>
+      <div class="flex gap-4 items-start bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+        <i data-lucide="calendar-plus" class="w-5 h-5 text-green-600 shrink-0 mt-0.5"></i>
         <div>
           <h3 class="font-semibold mb-1">Agendar citas</h3>
           <p class="text-gray-500 text-sm">Muestra huecos disponibles del calendario y crea la cita automáticamente.</p>
         </div>
       </div>
-      <div class="flex gap-4 items-start bg-white p-5 rounded-xl shadow-sm">
-        <span class="text-2xl">🔄</span>
+      <div class="flex gap-4 items-start bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+        <i data-lucide="rotate-ccw" class="w-5 h-5 text-green-600 shrink-0 mt-0.5"></i>
         <div>
           <h3 class="font-semibold mb-1">Modificar y cancelar</h3>
           <p class="text-gray-500 text-sm">El paciente cambia su cita sin tener que llamar ni esperar respuesta.</p>
         </div>
       </div>
-      <div class="flex gap-4 items-start bg-white p-5 rounded-xl shadow-sm">
-        <span class="text-2xl">💬</span>
+      <div class="flex gap-4 items-start bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+        <i data-lucide="message-circle" class="w-5 h-5 text-green-600 shrink-0 mt-0.5"></i>
         <div>
           <h3 class="font-semibold mb-1">Responder dudas frecuentes</h3>
           <p class="text-gray-500 text-sm">Precios, horarios, servicios, política de cancelación. Sin interrumpirte.</p>
         </div>
       </div>
-      <div class="flex gap-4 items-start bg-white p-5 rounded-xl shadow-sm">
-        <span class="text-2xl">🔔</span>
+      <div class="flex gap-4 items-start bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+        <i data-lucide="bell" class="w-5 h-5 text-green-600 shrink-0 mt-0.5"></i>
         <div>
           <h3 class="font-semibold mb-1">Recordatorios automáticos</h3>
           <p class="text-gray-500 text-sm">Avisa al paciente 24h antes de su cita por WhatsApp.</p>
@@ -108,59 +124,164 @@
 
 <!-- DEMO CONVERSACIÓN -->
 <section id="demo" class="py-14 px-6 bg-white">
-  <div class="max-w-4xl mx-auto">
+  <div class="max-w-5xl mx-auto">
     <h2 class="text-2xl font-bold text-center mb-2">Así funciona en WhatsApp</h2>
     <p class="text-center text-gray-500 mb-10">Una conversación real, sin fricción, sin apps nuevas.</p>
-    <div class="max-w-sm mx-auto bg-gray-100 rounded-2xl overflow-hidden shadow-lg">
-      <!-- Cabecera chat -->
-      <div class="wa-green text-white px-4 py-3 flex items-center gap-3">
-        <div class="w-9 h-9 rounded-full bg-green-300 flex items-center justify-center font-bold text-green-900">C</div>
-        <div>
-          <div class="font-semibold text-sm">Clínica Fisio</div>
-          <div class="text-xs text-green-200">en línea</div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+      <!-- Demo 1: Fisioterapia -->
+      <div class="bg-gray-100 rounded-2xl overflow-hidden shadow-lg">
+        <div class="wa-green text-white px-4 py-3 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-green-300 flex items-center justify-center font-bold text-green-900">C</div>
+          <div>
+            <div class="font-semibold text-sm">Clínica Fisio</div>
+            <div class="text-xs text-green-200">en línea</div>
+          </div>
+        </div>
+        <div class="p-4 space-y-3 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iI2UwZTBlMCIgZmlsbC1vcGFjaXR5PSIuMDYiIGQ9Ik0wIDBoNTB2NTBIMHoiLz48L3N2Zz4=')] min-h-72">
+          <div class="flex justify-end">
+            <div class="wa-bubble-out px-3 py-2 max-w-[85%] text-sm shadow-sm">
+              <p>Hola! Quería pedir una cita de fisio para esta semana</p>
+              <p class="text-xs text-gray-400 text-right mt-1">10:42 ✓✓</p>
+            </div>
+          </div>
+          <div class="flex justify-start">
+            <div class="wa-bubble-in px-3 py-2 max-w-[85%] text-sm shadow-sm border border-gray-100">
+              <p>¡Hola! Tengo estos huecos disponibles:</p>
+              <p class="mt-1">* Miércoles 26 a las 16:00<br>* Jueves 27 a las 09:00<br>* Jueves 27 a las 11:00</p>
+              <p class="mt-1">¿Cuál te viene mejor?</p>
+              <p class="text-xs text-gray-400 text-right mt-1">10:42</p>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <div class="wa-bubble-out px-3 py-2 max-w-[85%] text-sm shadow-sm">
+              <p>El jueves a las 11</p>
+              <p class="text-xs text-gray-400 text-right mt-1">10:43 ✓✓</p>
+            </div>
+          </div>
+          <div class="flex justify-start">
+            <div class="wa-bubble-in px-3 py-2 max-w-[85%] text-sm shadow-sm border border-gray-100">
+              <p>¡Perfecto! Jueves 27 a las 11:00. Dime tu nombre para confirmar.</p>
+              <p class="text-xs text-gray-400 text-right mt-1">10:43</p>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <div class="wa-bubble-out px-3 py-2 max-w-[85%] text-sm shadow-sm">
+              <p>María García</p>
+              <p class="text-xs text-gray-400 text-right mt-1">10:44 ✓✓</p>
+            </div>
+          </div>
+          <div class="flex justify-start">
+            <div class="wa-bubble-in px-3 py-2 max-w-[85%] text-sm shadow-sm border border-gray-100">
+              <p>Cita confirmada para María García, jueves 27 a las 11:00. ✅<br><br>Puedes cancelar sin coste con 24h de antelación.</p>
+              <p class="text-xs text-gray-400 text-right mt-1">10:44</p>
+            </div>
+          </div>
         </div>
       </div>
-      <!-- Mensajes -->
-      <div class="p-4 space-y-3 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iI2UwZTBlMCIgZmlsbC1vcGFjaXR5PSIuMDYiIGQ9Ik0wIDBoNTB2NTBIMHoiLz48L3N2Zz4=')] min-h-72">
-        <div class="flex justify-end">
-          <div class="wa-bubble-out px-3 py-2 max-w-[80%] text-sm shadow-sm">
-            <p>Hola! Quería pedir una cita de fisio para esta semana</p>
-            <p class="text-xs text-gray-400 text-right mt-1">10:42 ✓✓</p>
+
+      <!-- Demo 2: Peluquería -->
+      <div class="bg-gray-100 rounded-2xl overflow-hidden shadow-lg">
+        <div class="wa-green text-white px-4 py-3 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-green-300 flex items-center justify-center font-bold text-green-900">S</div>
+          <div>
+            <div class="font-semibold text-sm">Studio Belleza</div>
+            <div class="text-xs text-green-200">en línea</div>
           </div>
         </div>
-        <div class="flex justify-start">
-          <div class="wa-bubble-in px-3 py-2 max-w-[80%] text-sm shadow-sm border border-gray-100">
-            <p>¡Hola! Tengo estos huecos disponibles esta semana:</p>
-            <p class="mt-1">* Miércoles 26 a las 16:00<br>* Miércoles 26 a las 17:00<br>* Jueves 27 a las 09:00<br>* Jueves 27 a las 11:00</p>
-            <p class="mt-1">¿Cuál te viene mejor?</p>
-            <p class="text-xs text-gray-400 text-right mt-1">10:42</p>
+        <div class="p-4 space-y-3 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iI2UwZTBlMCIgZmlsbC1vcGFjaXR5PSIuMDYiIGQ9Ik0wIDBoNTB2NTBIMHoiLz48L3N2Zz4=')] min-h-72">
+          <div class="flex justify-end">
+            <div class="wa-bubble-out px-3 py-2 max-w-[85%] text-sm shadow-sm">
+              <p>Buenas! Quería pedir cita para corte y tinte</p>
+              <p class="text-xs text-gray-400 text-right mt-1">11:15 ✓✓</p>
+            </div>
           </div>
-        </div>
-        <div class="flex justify-end">
-          <div class="wa-bubble-out px-3 py-2 max-w-[80%] text-sm shadow-sm">
-            <p>El jueves a las 11</p>
-            <p class="text-xs text-gray-400 text-right mt-1">10:43 ✓✓</p>
+          <div class="flex justify-start">
+            <div class="wa-bubble-in px-3 py-2 max-w-[85%] text-sm shadow-sm border border-gray-100">
+              <p>¡Hola! Para corte y tinte tenemos disponible:</p>
+              <p class="mt-1">* Martes 25 a las 10:00<br>* Miércoles 26 a las 12:00<br>* Viernes 28 a las 16:30</p>
+              <p class="mt-1">¿Qué día te viene bien?</p>
+              <p class="text-xs text-gray-400 text-right mt-1">11:15</p>
+            </div>
           </div>
-        </div>
-        <div class="flex justify-start">
-          <div class="wa-bubble-in px-3 py-2 max-w-[80%] text-sm shadow-sm border border-gray-100">
-            <p>¡Perfecto! Jueves 27 a las 11:00. Para la reserva, dime tu nombre completo.</p>
-            <p class="text-xs text-gray-400 text-right mt-1">10:43</p>
+          <div class="flex justify-end">
+            <div class="wa-bubble-out px-3 py-2 max-w-[85%] text-sm shadow-sm">
+              <p>El miércoles a las 12</p>
+              <p class="text-xs text-gray-400 text-right mt-1">11:16 ✓✓</p>
+            </div>
           </div>
-        </div>
-        <div class="flex justify-end">
-          <div class="wa-bubble-out px-3 py-2 max-w-[80%] text-sm shadow-sm">
-            <p>María García</p>
-            <p class="text-xs text-gray-400 text-right mt-1">10:44 ✓✓</p>
+          <div class="flex justify-start">
+            <div class="wa-bubble-in px-3 py-2 max-w-[85%] text-sm shadow-sm border border-gray-100">
+              <p>Miércoles 26 a las 12:00, corte y tinte. ¿Tu nombre?</p>
+              <p class="text-xs text-gray-400 text-right mt-1">11:16</p>
+            </div>
           </div>
-        </div>
-        <div class="flex justify-start">
-          <div class="wa-bubble-in px-3 py-2 max-w-[80%] text-sm shadow-sm border border-gray-100">
-            <p>Cita confirmada para María García, jueves 27 a las 11:00. ✅<br><br>Te recuerdo que puedes cancelar sin coste con 24h de antelación.</p>
-            <p class="text-xs text-gray-400 text-right mt-1">10:44</p>
+          <div class="flex justify-end">
+            <div class="wa-bubble-out px-3 py-2 max-w-[85%] text-sm shadow-sm">
+              <p>Laura Martínez</p>
+              <p class="text-xs text-gray-400 text-right mt-1">11:17 ✓✓</p>
+            </div>
+          </div>
+          <div class="flex justify-start">
+            <div class="wa-bubble-in px-3 py-2 max-w-[85%] text-sm shadow-sm border border-gray-100">
+              <p>¡Anotado! Cita para Laura Martínez el miércoles 26 a las 12:00. ✅<br><br>Recuerda avisar si no puedes venir.</p>
+              <p class="text-xs text-gray-400 text-right mt-1">11:17</p>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- Demo 3: Clínica Dental -->
+      <div class="bg-gray-100 rounded-2xl overflow-hidden shadow-lg">
+        <div class="wa-green text-white px-4 py-3 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-green-300 flex items-center justify-center font-bold text-green-900">D</div>
+          <div>
+            <div class="font-semibold text-sm">Clínica Dental</div>
+            <div class="text-xs text-green-200">en línea</div>
+          </div>
+        </div>
+        <div class="p-4 space-y-3 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iI2UwZTBlMCIgZmlsbC1vcGFjaXR5PSIuMDYiIGQ9Ik0wIDBoNTB2NTBIMHoiLz48L3N2Zz4=')] min-h-72">
+          <div class="flex justify-end">
+            <div class="wa-bubble-out px-3 py-2 max-w-[85%] text-sm shadow-sm">
+              <p>Hola, quiero pedir cita para una limpieza dental</p>
+              <p class="text-xs text-gray-400 text-right mt-1">09:30 ✓✓</p>
+            </div>
+          </div>
+          <div class="flex justify-start">
+            <div class="wa-bubble-in px-3 py-2 max-w-[85%] text-sm shadow-sm border border-gray-100">
+              <p>¡Buenos días! Para limpieza dental tenemos:</p>
+              <p class="mt-1">* Lunes 24 a las 09:00<br>* Martes 25 a las 17:00<br>* Jueves 27 a las 10:30</p>
+              <p class="mt-1">¿Cuál prefieres?</p>
+              <p class="text-xs text-gray-400 text-right mt-1">09:30</p>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <div class="wa-bubble-out px-3 py-2 max-w-[85%] text-sm shadow-sm">
+              <p>El martes a las 17</p>
+              <p class="text-xs text-gray-400 text-right mt-1">09:31 ✓✓</p>
+            </div>
+          </div>
+          <div class="flex justify-start">
+            <div class="wa-bubble-in px-3 py-2 max-w-[85%] text-sm shadow-sm border border-gray-100">
+              <p>Martes 25 a las 17:00, limpieza dental. ¿Tu nombre completo?</p>
+              <p class="text-xs text-gray-400 text-right mt-1">09:31</p>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <div class="wa-bubble-out px-3 py-2 max-w-[85%] text-sm shadow-sm">
+              <p>Carlos Ruiz</p>
+              <p class="text-xs text-gray-400 text-right mt-1">09:32 ✓✓</p>
+            </div>
+          </div>
+          <div class="flex justify-start">
+            <div class="wa-bubble-in px-3 py-2 max-w-[85%] text-sm shadow-sm border border-gray-100">
+              <p>Cita confirmada para Carlos Ruiz, martes 25 a las 17:00. ✅<br><br>Te recordaremos 24h antes por aquí.</p>
+              <p class="text-xs text-gray-400 text-right mt-1">09:32</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
@@ -171,41 +292,41 @@
     <h2 class="text-2xl font-bold text-center mb-2">Precios transparentes</h2>
     <p class="text-center text-gray-500 mb-10">Sin permanencia. Sin sorpresas.</p>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 text-center">
-        <div class="text-3xl mb-3">🎁</div>
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 text-center hover:shadow-md transition-shadow duration-200">
+        <div class="mb-4 flex justify-center"><i data-lucide="gift" class="w-8 h-8 text-teal-600"></i></div>
         <h3 class="font-bold text-lg mb-1">Prueba gratuita</h3>
         <div class="text-4xl font-extrabold text-green-600 my-3">0 €</div>
         <p class="text-gray-500 text-sm mb-4">15 días sin compromiso</p>
-        <ul class="text-sm text-gray-600 space-y-1 text-left">
-          <li>✅ Bot completamente funcional</li>
-          <li>✅ Integración Google Calendar</li>
-          <li>✅ Panel de administración</li>
-          <li>✅ Soporte incluido</li>
+        <ul class="text-sm text-gray-600 space-y-2 text-left">
+          <li class="flex gap-2 items-start"><i data-lucide="check" class="w-4 h-4 text-green-600 shrink-0 mt-0.5"></i> Bot completamente funcional</li>
+          <li class="flex gap-2 items-start"><i data-lucide="check" class="w-4 h-4 text-green-600 shrink-0 mt-0.5"></i> Integración Google Calendar</li>
+          <li class="flex gap-2 items-start"><i data-lucide="check" class="w-4 h-4 text-green-600 shrink-0 mt-0.5"></i> Panel de administración</li>
+          <li class="flex gap-2 items-start"><i data-lucide="check" class="w-4 h-4 text-green-600 shrink-0 mt-0.5"></i> Soporte incluido</li>
         </ul>
       </div>
-      <div class="bg-green-600 rounded-2xl p-6 shadow-lg text-white text-center relative">
-        <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full">MÁS POPULAR</div>
-        <div class="text-3xl mb-3">🚀</div>
+      <div class="bg-green-600 rounded-2xl p-6 shadow-lg text-white text-center relative hover:shadow-xl transition-shadow duration-200">
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full">MÁS POPULAR</div>
+        <div class="mb-4 flex justify-center"><i data-lucide="rocket" class="w-8 h-8 text-green-200"></i></div>
         <h3 class="font-bold text-lg mb-1">Puesta en marcha</h3>
         <div class="text-4xl font-extrabold my-3">300 €</div>
         <p class="text-green-200 text-sm mb-4">Pago único</p>
-        <ul class="text-sm text-green-100 space-y-1 text-left">
-          <li>✅ Configuración completa</li>
-          <li>✅ Personalización del bot</li>
-          <li>✅ Integración con tu número</li>
-          <li>✅ Formación incluida</li>
+        <ul class="text-sm text-green-100 space-y-2 text-left">
+          <li class="flex gap-2 items-start"><i data-lucide="check" class="w-4 h-4 text-green-200 shrink-0 mt-0.5"></i> Configuración completa</li>
+          <li class="flex gap-2 items-start"><i data-lucide="check" class="w-4 h-4 text-green-200 shrink-0 mt-0.5"></i> Personalización del bot</li>
+          <li class="flex gap-2 items-start"><i data-lucide="check" class="w-4 h-4 text-green-200 shrink-0 mt-0.5"></i> Integración con tu número</li>
+          <li class="flex gap-2 items-start"><i data-lucide="check" class="w-4 h-4 text-green-200 shrink-0 mt-0.5"></i> Formación incluida</li>
         </ul>
       </div>
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 text-center">
-        <div class="text-3xl mb-3">📅</div>
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 text-center hover:shadow-md transition-shadow duration-200">
+        <div class="mb-4 flex justify-center"><i data-lucide="refresh-cw" class="w-8 h-8 text-teal-600"></i></div>
         <h3 class="font-bold text-lg mb-1">Mantenimiento</h3>
         <div class="text-4xl font-extrabold text-gray-800 my-3">49 €<span class="text-lg text-gray-500">/mes</span></div>
         <p class="text-gray-500 text-sm mb-4">Sin permanencia</p>
-        <ul class="text-sm text-gray-600 space-y-1 text-left">
-          <li>✅ Servidor y base de datos</li>
-          <li>✅ Actualizaciones automáticas</li>
-          <li>✅ Soporte por WhatsApp</li>
-          <li>✅ Cancela cuando quieras</li>
+        <ul class="text-sm text-gray-600 space-y-2 text-left">
+          <li class="flex gap-2 items-start"><i data-lucide="check" class="w-4 h-4 text-green-600 shrink-0 mt-0.5"></i> Servidor y base de datos</li>
+          <li class="flex gap-2 items-start"><i data-lucide="check" class="w-4 h-4 text-green-600 shrink-0 mt-0.5"></i> Actualizaciones automáticas</li>
+          <li class="flex gap-2 items-start"><i data-lucide="check" class="w-4 h-4 text-green-600 shrink-0 mt-0.5"></i> Soporte por WhatsApp</li>
+          <li class="flex gap-2 items-start"><i data-lucide="check" class="w-4 h-4 text-green-600 shrink-0 mt-0.5"></i> Cancela cuando quieras</li>
         </ul>
       </div>
     </div>
@@ -219,11 +340,11 @@
     <div class="overflow-x-auto">
       <table class="w-full text-sm border-collapse">
         <thead>
-          <tr class="bg-gray-100">
-            <th class="text-left p-3 rounded-tl-xl">Característica</th>
-            <th class="p-3 text-center font-bold text-green-700">BotLLM</th>
-            <th class="p-3 text-center text-gray-500">App de citas<br><span class="text-xs">(Doctoralia, etc.)</span></th>
-            <th class="p-3 text-center text-gray-500 rounded-tr-xl">Asistente genérico<br><span class="text-xs">(Tidio, etc.)</span></th>
+          <tr class="bg-gray-50">
+            <th class="text-left p-3 rounded-tl-xl text-xs uppercase tracking-wider text-gray-500 font-semibold">Característica</th>
+            <th class="p-3 text-center text-xs uppercase tracking-wider font-semibold text-green-700">Attendoo</th>
+            <th class="p-3 text-center text-xs uppercase tracking-wider font-semibold text-gray-400">App de citas<br><span class="normal-case text-xs font-normal">(Doctoralia, etc.)</span></th>
+            <th class="p-3 text-center text-xs uppercase tracking-wider font-semibold text-gray-400 rounded-tr-xl">Asistente genérico<br><span class="normal-case text-xs font-normal">(Tidio, etc.)</span></th>
           </tr>
         </thead>
         <tbody>
@@ -270,7 +391,7 @@
 </section>
 
 <!-- CTA FINAL -->
-<section class="gradient-hero text-white py-16 px-6 text-center">
+<section id="contacto" class="gradient-hero text-white py-16 px-6 text-center">
   <div class="max-w-2xl mx-auto">
     <h2 class="text-3xl font-extrabold mb-4">Empieza gratis durante 15 días</h2>
     <p class="text-green-100 mb-8 text-lg">Sin tarjeta de crédito. Sin permanencia. Cancela cuando quieras.</p>
@@ -278,8 +399,8 @@
       <p class="font-semibold mb-3">Contacta para empezar:</p>
       <div class="space-y-2 text-green-100">
         <p>📱 WhatsApp: <span class="text-white font-medium">+34 XXX XXX XXX</span></p>
-        <p>📧 Email: <span class="text-white font-medium">hola@botllm.es</span></p>
-        <p>🌐 Web: <span class="text-white font-medium">botllm.es</span></p>
+        <p>📧 Email: <span class="text-white font-medium">hola@attendoo.com</span></p>
+        <p>🌐 Web: <span class="text-white font-medium">attendoo.com</span></p>
       </div>
     </div>
     <p class="text-green-200 text-sm mt-6">Respuesta en menos de 24h · Instalación en 48h · Soporte incluido</p>
@@ -288,8 +409,9 @@
 
 <!-- FOOTER -->
 <footer class="bg-gray-900 text-gray-400 py-6 px-6 text-center text-sm">
-  <p>© 2026 BotLLM · Asistente de WhatsApp para clínicas · Todos los derechos reservados</p>
+  <p>© 2026 Attendoo · Asistente de WhatsApp para clínicas · Todos los derechos reservados</p>
 </footer>
 
+<script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
 </body>
 </html>

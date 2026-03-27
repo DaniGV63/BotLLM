@@ -129,6 +129,17 @@ class ConversationDetailResponse(BaseModel):
     messages: list[MessageRead]
 
 
+# --- Onboarding ---
+
+
+class TenantOnboardingStatus(BaseModel):
+    slug: str
+    nombre_negocio: str
+    whatsapp_configured: bool
+    google_configured: bool
+    missing_steps: list[str]
+
+
 # --- Métricas ---
 
 

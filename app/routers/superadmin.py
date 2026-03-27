@@ -18,6 +18,7 @@ from app.schemas.admin import (
     TenantCreate,
     TenantListItem,
     TenantListResponse,
+    TenantOnboardingStatus,
     TenantRead,
 )
 
@@ -166,3 +167,37 @@ async def delete_user(
     await db.delete(user)
     await db.commit()
     logger.info("admin_user_deleted", user_id=str(user_id))
+
+
+@router.get("/tenants/{tenant_id}/onboarding-status", response_model=TenantOnboardingStatus)
+async def get_onboarding_status(
+    tenant_id: uuid.UUID,
+    _: TokenData = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+) -> TenantOnboardingStatus:
+    """Devuelve el estado de configuración de un tenant."""
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    whatsapp_ok = bool(tenant.whatsapp_phone_number_id and tenant.whatsapp_token)
+    google_ok = bool(tenant.google_access_token and tenant.google_refresh_token)
+
+    missing: list[str] = []
+    if not tenant.whatsapp_token:
+        missing.append("whatsapp_token — pégalo desde Meta Console → System User → Token")
+    if not tenant.whatsapp_phone_number_id:
+        missing.append("whatsapp_phone_number_id — cópialo desde Meta Console → WhatsApp → Phone Numbers")
+    if not tenant.google_access_token or not tenant.google_refresh_token:
+        missing.append("google_tokens — usa 'Autorizar Google' en el panel admin")
+    if not tenant.google_calendar_id:
+        missing.append("google_calendar_id — pregunta al cliente qué calendario usa (normalmente su email)")
+
+    return TenantOnboardingStatus(
+        slug=tenant.slug,
+        nombre_negocio=tenant.nombre_negocio,
+        whatsapp_configured=whatsapp_ok,
+        google_configured=google_ok,
+        missing_steps=missing,
+    )

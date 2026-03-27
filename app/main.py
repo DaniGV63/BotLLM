@@ -1,13 +1,18 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import structlog
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 from app.core.config import settings
 from app.core.redis import close_redis
 from app.routers.admin import router as admin_router
+from app.routers.oauth import router as oauth_router
 from app.routers.superadmin import router as superadmin_router
 from app.routers.webhook import router as webhook_router
 
@@ -35,18 +40,30 @@ def setup_logging() -> None:
     )
 
 
+async def _safe_backup() -> None:
+    """Backup fire-and-forget al arrancar. No bloquea el startup."""
+    try:
+        from app.services.backup_service import run_full_backup
+
+        path = await run_full_backup()
+        structlog.get_logger().info("startup_backup_ok", path=str(path))
+    except Exception:
+        structlog.get_logger().error("startup_backup_failed", exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
     logger = structlog.get_logger()
-    logger.info("botllm_started", version="1.1.0")
+    logger.info("attendoo_started", version="1.1.0")
+    asyncio.create_task(_safe_backup())
     yield
     await close_redis()
-    logger.info("botllm_stopped")
+    logger.info("attendoo_stopped")
 
 
 app = FastAPI(
-    title="BotLLM",
+    title="Attendoo",
     version="1.1.0",
     lifespan=lifespan,
 )
@@ -55,7 +72,9 @@ app = FastAPI(
 app.include_router(webhook_router)
 app.include_router(admin_router)
 app.include_router(superadmin_router)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.include_router(oauth_router)
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+app.mount("/landing", StaticFiles(directory=str(BASE_DIR / "landing")), name="landing")
 
 
 @app.get("/health")
