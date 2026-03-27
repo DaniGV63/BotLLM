@@ -1,8 +1,8 @@
 Ready for review
 Select text to add comments on the plan
-BotLLM v1.0 — Plan de Pruebas, Configuración y Roadmap
+Attendoo v1.0 — Plan de Pruebas, Configuración y Roadmap
 Contexto
-BotLLM v1.0 está construido y pusheado. Antes de ponerlo en producción real necesitamos:
+Attendoo v1.0 está construido y pusheado. Antes de ponerlo en producción real necesitamos:
 
 Configurar todos los servicios externos (Meta, Google, LLM)
 Probar localmente con ngrok
@@ -152,12 +152,12 @@ PARTE 3 — Despliegue en producción (Hetzner)
  .env.prod preparado con todos los valores reales
 3.2 Ejecutar deploy.sh
 # Copiar .env.prod al servidor
-scp .env.prod root@IP_VPS:/opt/botllm/.env.prod
+scp .env.prod root@IP_VPS:/opt/attendoo/.env.prod
 
 # Ejecutar deploy
 export DOMAIN="tudominio.com"
 export EMAIL="tu@email.com"
-export REPO_URL="https://github.com/tu-usuario/BotLLM.git"
+export REPO_URL="https://github.com/tu-usuario/Attendoo.git"
 scp deploy.sh root@IP_VPS:/root/ && ssh root@IP_VPS 'chmod +x deploy.sh && ./deploy.sh'
 3.3 Verificaciones post-deploy
 # Health check
@@ -167,7 +167,7 @@ curl https://tudominio.com/health
 # Navegador: https://tudominio.com/admin
 
 # Logs
-ssh root@IP_VPS 'docker compose -f /opt/botllm/docker-compose.prod.yml logs -f app'
+ssh root@IP_VPS 'docker compose -f /opt/attendoo/docker-compose.prod.yml logs -f app'
 3.4 Cambiar webhook en Meta a producción
 Meta Developer Console → WhatsApp → Configuration
 Cambiar Callback URL de ngrok a: https://tudominio.com/webhook

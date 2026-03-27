@@ -1,4 +1,4 @@
-# DEPLOY.md — Guía de Despliegue BotLLM
+# DEPLOY.md — Guía de Despliegue Attendoo
 
 ## Requisitos previos
 
@@ -57,7 +57,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 ```bash
 # Copiar .env.prod al servidor
-scp .env.prod root@IP_VPS:/opt/botllm/.env.prod
+scp .env.prod root@IP_VPS:/opt/attendoo/.env.prod
 
 # Copiar y ejecutar el script de despliegue
 scp deploy.sh root@IP_VPS:/root/
@@ -67,7 +67,7 @@ chmod +x deploy.sh
 # Configurar variables y ejecutar
 export DOMAIN="tudominio.com"
 export EMAIL="tu@email.com"
-export REPO_URL="https://github.com/tu-usuario/BotLLM.git"
+export REPO_URL="https://github.com/tu-usuario/Attendoo.git"
 ./deploy.sh
 ```
 
@@ -93,7 +93,7 @@ curl https://tudominio.com/health
 
 ```bash
 ssh root@IP_VPS
-cd /opt/botllm
+cd /opt/attendoo
 git pull origin main
 docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec -T app alembic upgrade head

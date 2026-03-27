@@ -1,4 +1,4 @@
-# PLAN.md — Bot WhatsApp Fisioterapeuta (BotLLM)
+# PLAN.md — Bot WhatsApp Fisioterapeuta (Attendoo)
 
 Documento maestro. Fases con checklist, esquema BD, estructura de ficheros, convenciones.
 
@@ -31,7 +31,7 @@ solo clasifica y redacta — nunca decide disponibilidad ni ejecuta acciones.
 
 ## 2. ANTI-PATRONES A NO REPETIR (del proyecto Bot/)
 
-| # | Anti-patrón | Qué pasó | Solución en BotLLM |
+| # | Anti-patrón | Qué pasó | Solución en Attendoo |
 |---|---|---|---|
 | 1 | God file | agent.py creció a 1754 líneas, 18 handlers | Ningún archivo > 300 líneas. Separar en llm_client.py, llm_service.py, agent.py |
 | 2 | Interactivos + LLM | List Messages + Reply Buttons + LLM = 11 estados | LLM solo redacta texto. Sin mensajes interactivos |
@@ -164,7 +164,7 @@ pytest-asyncio
 ## 5. ESTRUCTURA DE FICHEROS
 
 ```
-BotLLM/
+Attendoo/
 ├── CLAUDE.md                          ← guía compacta para Claude Code
 ├── PLAN.md                            ← este archivo
 ├── LOGICA.md                          ← lógica LLM: prompts, flujo, respuestas

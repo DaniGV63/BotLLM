@@ -38,6 +38,9 @@ logs/
 *.tmp
 *.bak
 
+# Backups de tenant (contienen tokens en texto plano y claves)
+backups/
+
 # Scripts de utilidad temporales
 _write_admin_html.py
 _check_users.py

@@ -1,4 +1,4 @@
-# CLAUDE.md — BotLLM
+# CLAUDE.md — Attendoo
 
 Guía compacta para Claude Code. Leer ENTERO antes de tocar cualquier archivo.
 Para detalles: ver PLAN.md (fases, BD, Docker) y LOGICA.md (LLM, prompts, flujo).
@@ -23,6 +23,7 @@ FastAPI + PostgreSQL + Redis + OpenAI SDK (GPT-4o-mini) + Google GenAI SDK (Gemi
 ## ENTORNO DEL DESARROLLADOR
 
 - Windows, VS Code fork (Antigravity), Python 3.12 via Miniconda
+- **Entorno conda:** `botllm` — SIEMPRE usar `conda run -n botllm` o `conda activate botllm`. NUNCA usar `base`.
 - Docker Desktop para PostgreSQL y Redis
 - Claude Code como extensión de VS Code
 - El desarrollador lanza todo manualmente: docker, alembic, seed, logs
@@ -30,7 +31,7 @@ FastAPI + PostgreSQL + Redis + OpenAI SDK (GPT-4o-mini) + Google GenAI SDK (Gemi
 ## ESTRUCTURA
 
 ```
-BotLLM/
+Attendoo/
 ├── CLAUDE.md, PLAN.md, LOGICA.md
 ├── prompts/
 │   ├── negocio.md                  ← datos del fisio (servicios, horarios, FAQ)
@@ -53,6 +54,13 @@ BotLLM/
 ```
 
 ## REGLAS INQUEBRANTABLES
+
+0. **PROHIBIDO DESTRUIR DATOS — REGLA ABSOLUTA**
+   - **NUNCA** ejecutar `docker compose down` seguido de `docker compose up` — esto borra el volumen PostgreSQL y destruye todos los datos de clientes, conversaciones y configuración del tenant.
+   - Para reiniciar contenedores: usar **`docker compose restart`** (preserva volúmenes).
+   - Para reiniciar solo la app: matar el proceso uvicorn y relanzarlo.
+   - Si hay conflicto de puertos: parar el contenedor/proceso que ocupa el puerto, **no recrear volúmenes**.
+   - Los datos de tenant (tokens WhatsApp, Google Calendar, etc.) viven solo en la BD — no hay backup automático. Destruirlos implica reconfiguración manual completa.
 
 1. **MUY RECOMENDABLE no superar 300 líneas por archivo de programación** (`.py`, `.js`, `.ts`, etc.) — refactorizar si crece. Superar puntualmente está permitido si la alternativa rompe la cohesión del módulo, pero nunca superar 400 líneas bajo ningún concepto. Esta regla NO aplica a archivos de markup/template (`.html`, `.css`, `.md`).
 2. **LLM singleton** por provider en llm_client.py
