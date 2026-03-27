@@ -1,4 +1,4 @@
-name: botllm
+name: attendoo
 
 services:
   db:

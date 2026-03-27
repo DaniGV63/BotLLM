@@ -1,4 +1,4 @@
-name: botllm-prod
+name: attendoo-prod
 
 services:
   app:

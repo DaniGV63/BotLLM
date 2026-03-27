@@ -1,5 +1,5 @@
 #!/bin/bash
-# deploy.sh — Despliegue de BotLLM en Hetzner CX23 (Ubuntu 22.04)
+# deploy.sh — Despliegue de Attendoo en Hetzner CX23 (Ubuntu 22.04)
 #
 # Primer despliegue:
 #   scp deploy.sh root@IP_VPS:/root/
@@ -15,11 +15,11 @@ set -euo pipefail
 # === CONFIGURAR ESTAS VARIABLES ===
 DOMAIN="${DOMAIN:-TU_DOMINIO.com}"
 EMAIL="${EMAIL:-tu@email.com}"
-REPO_URL="${REPO_URL:-https://github.com/TU_USUARIO/BotLLM.git}"
-APP_DIR="/opt/botllm"
+REPO_URL="${REPO_URL:-https://github.com/TU_USUARIO/Attendoo.git}"
+APP_DIR="/opt/attendoo"
 
 echo "============================================"
-echo "  BotLLM — Despliegue en producción"
+echo "  Attendoo — Despliegue en producción"
 echo "  Dominio: $DOMAIN"
 echo "============================================"
 echo ""
