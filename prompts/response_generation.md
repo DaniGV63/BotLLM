@@ -92,5 +92,12 @@ Para derivar a humano:
   }
 }
 
+Para despedida (cuando el paciente se despide: adiós, hasta luego, gracias ya no necesito nada más, etc.):
+{
+  "action": {
+    "type": "despedida"
+  }
+}
+
 El campo "nombre_detectado" es null si el paciente no dijo su nombre, o el nombre
 completo si lo mencionó en este mensaje.

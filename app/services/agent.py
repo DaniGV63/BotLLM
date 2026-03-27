@@ -9,6 +9,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.redis import acquire_lock
+from app.models.enums import ConversationState
 from app.models.tenant import Tenant
 from app.services.appointment_utils import (
     count_active_appointments,
@@ -24,9 +25,10 @@ from app.services.calendar_service import (
 )
 from app.services.conversation import (
     append_message,
+    deactivate_conversation,
     get_history,
     get_or_create_conversation,
-    reset_conversation,
+    reactivate_conversation,
 )
 from app.services.email_service import send_notification_email
 from app.services.llm_service import detect_intent, generate_response, load_prompt
@@ -130,10 +132,11 @@ async def handle_message(
             tenant_id, wa_phone, db
         )
 
-        # 2. Expiracion: si >24h sin actividad, resetear
-        if _is_expired(conversation):
-            log.info("conversation_expired_reset")
-            conversation = await reset_conversation(conversation, db)
+        # 2. Si INACTIVA (paciente vuelve tras despedida) o expirada (>24h sin mensaje)
+        #    → reactivar: historial limpio, nombre conservado
+        if conversation.estado == ConversationState.INACTIVA.value or _is_expired(conversation):
+            log.info("conversation_reactivated", estado=conversation.estado)
+            await reactivate_conversation(conversation, db)
 
         # 3. Cargar historial
         history = await get_history(tenant_id, wa_phone, db)
@@ -247,6 +250,10 @@ async def handle_message(
                     action.get("motivo", "Paciente quiere hablar con persona"),
                 )
                 action_executed = "derivar"
+
+            elif action_type == "despedida":
+                await deactivate_conversation(conversation, db)
+                action_executed = "despedida"
 
         # 9. Calcular processing_ms
         processing_ms = int((time.monotonic() - start_time) * 1000)
