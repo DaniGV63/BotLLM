@@ -3,59 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BotLLM - Panel Admin</title>
+    <title>Attendoo - Panel Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { brand: '#16A34A', accent: '#0D9488', sidebar: '#1F2937' },
+                    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="/static/attendoo.css">
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-gray-50 min-h-screen font-sans">
 
 <!-- Login -->
-<div id="login-section" class="flex items-center justify-center min-h-screen">
-    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
-        <h1 class="text-2xl font-bold text-center mb-6">BotLLM Admin</h1>
-        <div id="login-error" class="hidden bg-red-100 text-red-700 p-3 rounded mb-4 text-sm"></div>
-        <input id="login-user" type="text" placeholder="Usuario" class="w-full p-3 border rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <input id="login-pass" type="password" placeholder="Contrasena" class="w-full p-3 border rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500" onkeydown="if(event.key==='Enter')login()">
-        <button onclick="login()" class="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 font-medium">Entrar</button>
+<div id="login-section" class="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700">
+    <div class="backdrop-blur-xl bg-white/90 border border-white/50 p-8 rounded-2xl shadow-2xl w-full max-w-sm relative">
+        <a href="/landing/index.html" class="absolute top-4 left-4 text-gray-400 hover:text-gray-700 flex items-center gap-1 text-sm transition-colors duration-150">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Atrás
+        </a>
+        <div class="text-center mb-8">
+            <span class="font-bold text-2xl text-gray-900 tracking-tight">Attendoo</span>
+            <p class="text-gray-500 text-sm mt-1">Panel de administración</p>
+        </div>
+        <div id="login-error" class="hidden bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg mb-4 text-sm"></div>
+        <input id="login-user" type="text" placeholder="Usuario" class="w-full p-3 border border-gray-200 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white text-sm" onkeydown="if(event.key==='Enter')login()">
+        <input id="login-pass" type="password" placeholder="Contraseña" class="w-full p-3 border border-gray-200 rounded-lg mb-5 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white text-sm" onkeydown="if(event.key==='Enter')login()">
+        <button onclick="login()" class="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 font-semibold transition-colors duration-150 text-sm">Entrar</button>
+        <p class="text-center text-xs text-gray-400 mt-5">¿Todavía no tienes cuenta? <a href="/landing/index.html#contacto" class="text-teal-600 hover:underline font-medium">Regístrate</a></p>
     </div>
 </div>
 
 <!-- Dashboard -->
-<div id="dashboard-section" class="hidden">
+<div id="dashboard-section" class="hidden flex h-screen overflow-hidden">
 
-    <!-- Banner impersonacion -->
-    <div id="impersonation-banner" class="hidden bg-amber-500 text-white text-sm px-6 py-2 flex items-center justify-between">
-        <span>Gestionando: <strong id="banner-tenant-name"></strong></span>
-        <button onclick="stopImpersonating()" class="underline font-medium hover:text-amber-100">&larr; Volver al panel principal</button>
-    </div>
-
-    <nav class="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
-        <div>
-            <span class="font-bold text-lg">BotLLM</span>
-            <span id="nav-nombre" class="text-gray-500 ml-2"></span>
-            <span id="nav-role-badge" class="ml-2 text-xs font-medium px-2 py-0.5 rounded-full"></span>
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-60 bg-sidebar flex-col shrink-0 hidden md:flex">
+        <div class="px-6 py-5 border-b border-white/10">
+            <span class="text-white font-bold text-lg tracking-tight">Attendoo</span>
         </div>
-        <button onclick="logout()" class="text-red-600 hover:text-red-800 text-sm font-medium">Cerrar sesion</button>
-    </nav>
-
-    <div class="max-w-5xl mx-auto mt-6 px-4">
-        <div class="flex border-b mb-6 flex-wrap gap-1">
-            <button onclick="showTab('tenants')" id="tab-btn-tenants" class="hidden px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Tenants</button>
-            <button onclick="showTab('usuarios')" id="tab-btn-usuarios" class="hidden px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Usuarios</button>
-            <button onclick="showTab('datos')" id="tab-btn-datos" class="hidden px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Datos</button>
-            <button onclick="showTab('google')" id="tab-btn-google" class="hidden px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Google</button>
-            <button onclick="showTab('conversaciones')" id="tab-btn-conversaciones" class="hidden px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Conversaciones</button>
-            <button onclick="showTab('dashboard')" id="tab-btn-dashboard" class="hidden px-4 py-2 font-medium text-gray-500 hover:text-gray-700">Dashboard</button>
+        <nav class="flex-1 px-3 py-4 space-y-1">
+            <button onclick="showTab('tenants')" id="tab-btn-tenants" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
+                <i data-lucide="building-2" class="w-4 h-4 shrink-0"></i> Tenants
+            </button>
+            <button onclick="showTab('usuarios')" id="tab-btn-usuarios" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
+                <i data-lucide="users" class="w-4 h-4 shrink-0"></i> Usuarios
+            </button>
+            <button onclick="showTab('configuracion')" id="tab-btn-configuracion" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
+                <i data-lucide="settings" class="w-4 h-4 shrink-0"></i> Configuración
+            </button>
+            <button onclick="showTab('google')" id="tab-btn-google" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
+                <i data-lucide="calendar" class="w-4 h-4 shrink-0"></i> Google
+            </button>
+            <button onclick="showTab('conversaciones')" id="tab-btn-conversaciones" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
+                <i data-lucide="message-square" class="w-4 h-4 shrink-0"></i> Conversaciones
+            </button>
+            <button onclick="showTab('dashboard')" id="tab-btn-dashboard" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
+                <i data-lucide="bar-chart-3" class="w-4 h-4 shrink-0"></i> Dashboard
+            </button>
+        </nav>
+        <div class="px-4 py-4 border-t border-white/10 space-y-2">
+            <span id="nav-role-badge" class="hidden text-xs font-medium px-2 py-0.5 rounded-full"></span>
+            <p id="nav-nombre" class="text-gray-300 text-sm font-medium truncate px-3"></p>
+            <button onclick="logout()" class="text-gray-400 hover:text-white text-sm transition-colors duration-150 px-3">Cerrar sesión</button>
         </div>
+    </aside>
 
-        <div id="msg-ok" class="hidden bg-green-100 text-green-700 p-3 rounded mb-4 text-sm"></div>
-        <div id="msg-err" class="hidden bg-red-100 text-red-700 p-3 rounded mb-4 text-sm"></div>
+    <!-- Main area -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <!-- Mobile header -->
+        <div class="md:hidden bg-sidebar text-white px-4 py-3 flex items-center justify-between shrink-0">
+            <span class="font-bold">Attendoo</span>
+            <button onclick="toggleMobileSidebar()" class="text-gray-300 hover:text-white">
+                <i data-lucide="menu" class="w-5 h-5"></i>
+            </button>
+        </div>
+        <!-- Banner impersonacion -->
+        <div id="impersonation-banner" class="hidden bg-amber-500 text-white text-sm px-6 py-2 flex items-center justify-between shrink-0">
+            <span>Gestionando: <strong id="banner-tenant-name"></strong></span>
+            <button onclick="stopImpersonating()" class="underline font-medium hover:text-amber-100">&larr; Volver al panel principal</button>
+        </div>
+        <!-- Content -->
+        <main class="flex-1 overflow-y-auto p-6">
+            <div id="msg-ok" class="hidden bg-green-100 text-green-700 p-3 rounded-lg mb-4 text-sm"></div>
+            <div id="msg-err" class="hidden bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm"></div>
 
-        <!-- Tab: Tenants (super admin) -->
+            <!-- Tab: Tenants (super admin) -->
         <div id="tab-tenants" class="hidden">
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-semibold">Tenants</h2>
-                    <button onclick="showCreateTenantForm()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 font-medium">+ Nuevo tenant</button>
+                    <button onclick="showCreateTenantForm()" class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 font-medium">+ Nuevo tenant</button>
                 </div>
                 <div id="create-tenant-form" class="hidden bg-gray-50 p-4 rounded-lg mb-4 space-y-3">
                     <h3 class="font-medium text-gray-700">Nuevo tenant</h3>
@@ -66,14 +111,24 @@
                         <input id="nt-phone-id" type="text" placeholder="WhatsApp Phone Number ID" class="p-2 border rounded text-sm">
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="createTenant()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">Crear</button>
+                        <button onclick="createTenant()" class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">Crear</button>
                         <button onclick="hideCreateTenantForm()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300">Cancelar</button>
                     </div>
                 </div>
+                <div id="demo-tenant-card" class="hidden mb-6 bg-gradient-to-r from-teal-50 to-green-50 border border-teal-200 rounded-xl p-5 flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-semibold text-gray-900" id="demo-tenant-name"></span>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-700">DEMO</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Tenant de demostración para presentar a clientes</p>
+                    </div>
+                    <button id="demo-tenant-btn" class="px-4 py-2 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 transition-colors">Gestionar Demo</button>
+                </div>
                 <table class="w-full text-sm">
-                    <thead><tr class="border-b text-left text-gray-500">
-                        <th class="py-2 pr-4">Slug</th><th class="py-2 pr-4">Negocio</th>
-                        <th class="py-2 pr-4">Bot</th><th class="py-2 pr-4">Alta</th><th class="py-2"></th>
+                    <thead><tr class="border-b text-left text-gray-400 text-xs uppercase tracking-wider">
+                        <th class="pb-2 pr-4">Slug</th><th class="pb-2 pr-4">Negocio</th>
+                        <th class="pb-2 pr-4">Bot</th><th class="pb-2 pr-4">Alta</th><th class="pb-2"></th>
                     </tr></thead>
                     <tbody id="tenants-table"></tbody>
                 </table>
@@ -82,10 +137,10 @@
 
         <!-- Tab: Usuarios (super admin) -->
         <div id="tab-usuarios" class="hidden">
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-semibold">Usuarios admin</h2>
-                    <button onclick="showCreateUserForm()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 font-medium">+ Nuevo usuario</button>
+                    <button onclick="showCreateUserForm()" class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 font-medium">+ Nuevo usuario</button>
                 </div>
                 <div id="create-user-form" class="hidden bg-gray-50 p-4 rounded-lg mb-4 space-y-3">
                     <h3 class="font-medium text-gray-700">Nuevo tenant admin</h3>
@@ -98,32 +153,32 @@
                         </select>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="createUser()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">Crear</button>
+                        <button onclick="createUser()" class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">Crear</button>
                         <button onclick="hideCreateUserForm()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300">Cancelar</button>
                     </div>
                 </div>
                 <table class="w-full text-sm">
-                    <thead><tr class="border-b text-left text-gray-500">
-                        <th class="py-2 pr-4">Username</th><th class="py-2 pr-4">Rol</th>
-                        <th class="py-2 pr-4">Tenant</th><th class="py-2 pr-4">Email</th>
-                        <th class="py-2 pr-4">Alta</th><th class="py-2"></th>
+                    <thead><tr class="border-b text-left text-gray-400 text-xs uppercase tracking-wider">
+                        <th class="pb-2 pr-4">Username</th><th class="pb-2 pr-4">Rol</th>
+                        <th class="pb-2 pr-4">Tenant</th><th class="pb-2 pr-4">Email</th>
+                        <th class="pb-2 pr-4">Alta</th><th class="pb-2"></th>
                     </tr></thead>
                     <tbody id="users-table"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Tab: Datos -->
-        <div id="tab-datos" class="hidden">
-            <div class="bg-white rounded-lg shadow p-6 space-y-4">
-                <h2 class="text-lg font-semibold mb-2">Datos del negocio</h2>
+        <!-- Tab: Configuración -->
+        <div id="tab-configuracion" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
+                <h2 class="text-lg font-semibold mb-2">Configuración del negocio</h2>
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Nombre</label>
-                    <input id="f-nombre" type="text" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                    <input id="f-nombre" type="text" class="w-full p-2 border rounded focus:ring-2 focus:ring-teal-500">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Email notificaciones</label>
-                    <input id="f-email" type="email" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                    <input id="f-email" type="email" class="w-full p-2 border rounded focus:ring-2 focus:ring-teal-500">
                 </div>
                 <div class="flex items-center gap-3">
                     <label class="text-sm font-medium text-gray-600">Bot activo</label>
@@ -134,62 +189,62 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Mensajes/min (limite rate)</label>
-                        <input id="f-rate-limit" type="number" min="1" max="60" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                        <input id="f-rate-limit" type="number" min="1" max="60" class="w-full p-2 border rounded focus:ring-2 focus:ring-teal-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Max citas activas por paciente</label>
-                        <input id="f-max-citas" type="number" min="1" max="20" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                        <input id="f-max-citas" type="number" min="1" max="20" class="w-full p-2 border rounded focus:ring-2 focus:ring-teal-500">
                     </div>
                 </div>
-                <button onclick="saveDatos()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-medium">Guardar</button>
+                <button onclick="saveDatos()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium">Guardar</button>
             </div>
         </div>
 
         <!-- Tab: Google (solo super admin con tenant scoped) -->
         <div id="tab-google" class="hidden">
-            <div class="bg-white rounded-lg shadow p-6 space-y-4">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
                 <h2 class="text-lg font-semibold mb-2">Credenciales Google</h2>
                 <div id="google-status" class="text-sm p-3 rounded mb-2"></div>
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Calendar ID</label>
-                    <input id="f-calendar-id" type="text" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" placeholder="ejemplo@group.calendar.google.com">
+                    <input id="f-calendar-id" type="text" class="w-full p-2 border rounded focus:ring-2 focus:ring-teal-500" placeholder="ejemplo@group.calendar.google.com">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Access Token</label>
-                    <textarea id="f-access-token" rows="2" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 text-xs font-mono" placeholder="Dejar vacio para no modificar"></textarea>
+                    <textarea id="f-access-token" rows="2" class="w-full p-2 border rounded focus:ring-2 focus:ring-teal-500 text-xs font-mono" placeholder="Dejar vacio para no modificar"></textarea>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Refresh Token</label>
-                    <textarea id="f-refresh-token" rows="2" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 text-xs font-mono" placeholder="Dejar vacio para no modificar"></textarea>
+                    <textarea id="f-refresh-token" rows="2" class="w-full p-2 border rounded focus:ring-2 focus:ring-teal-500 text-xs font-mono" placeholder="Dejar vacio para no modificar"></textarea>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Token Expiry</label>
                     <input id="f-token-expiry" type="text" readonly class="w-full p-2 border rounded bg-gray-50 text-gray-500">
                 </div>
-                <button onclick="saveGoogle()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-medium">Guardar</button>
+                <button onclick="saveGoogle()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium">Guardar</button>
             </div>
         </div>
 
         <!-- Tab: Conversaciones -->
         <div id="tab-conversaciones" class="hidden">
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-semibold">Conversaciones recientes</h2>
-                    <button onclick="loadConversations(1)" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Refrescar</button>
+                    <button onclick="loadConversations(1)" class="text-sm text-[#1F2937] hover:text-black font-medium border border-[#1F2937] rounded-lg px-3 py-1">Refrescar</button>
                 </div>
                 <table class="w-full text-sm">
-                    <thead><tr class="border-b text-left text-gray-500">
-                        <th class="py-2 pr-4">Telefono</th><th class="py-2 pr-4">Nombre</th>
-                        <th class="py-2 pr-4">Estado</th><th class="py-2 pr-4">Ultimo mensaje</th><th class="py-2"></th>
+                    <thead><tr class="border-b text-left text-gray-400 text-xs uppercase tracking-wider">
+                        <th class="pb-2 pr-4">Teléfono</th><th class="pb-2 pr-4">Nombre</th>
+                        <th class="pb-2 pr-4">Estado</th><th class="pb-2 pr-4">Último mensaje</th><th class="pb-2"></th>
                     </tr></thead>
                     <tbody id="conv-table"></tbody>
                 </table>
                 <div id="conv-pagination" class="flex justify-between items-center mt-4 text-sm"></div>
             </div>
-            <div id="messages-panel" class="hidden mt-4 bg-white rounded-lg shadow p-6">
-                <div class="flex justify-between items-center mb-4">
+            <div id="messages-panel" class="hidden mt-4 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div class="flex items-center justify-between mb-4">
                     <h3 class="font-semibold">Mensajes &mdash; <span id="msg-phone"></span></h3>
-                    <button onclick="closeMessages()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+                    <button onclick="closeMessages()" class="text-sm text-[#1F2937] hover:text-black font-medium border border-[#1F2937] rounded-lg px-3 py-1">Cerrar</button>
                 </div>
                 <div id="messages-list" class="space-y-3 max-h-96 overflow-y-auto"></div>
             </div>
@@ -198,378 +253,37 @@
         <!-- Tab: Dashboard -->
         <div id="tab-dashboard" class="hidden">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div class="bg-white rounded-lg shadow p-4 text-center"><div class="text-2xl font-bold text-blue-600" id="v-msgs-hoy">&mdash;</div><div class="text-sm text-gray-500">Mensajes hoy</div></div>
-                <div class="bg-white rounded-lg shadow p-4 text-center"><div class="text-2xl font-bold text-green-600" id="v-citas-mes">&mdash;</div><div class="text-sm text-gray-500">Citas este mes</div></div>
-                <div class="bg-white rounded-lg shadow p-4 text-center"><div class="text-2xl font-bold text-yellow-600" id="v-avg-ms">&mdash;</div><div class="text-sm text-gray-500">Resp. media (ms)</div></div>
-                <div class="bg-white rounded-lg shadow p-4 text-center"><div class="text-2xl font-bold text-purple-600" id="v-activas">&mdash;</div><div class="text-sm text-gray-500">Conversaciones activas</div></div>
+                <div class="bg-white rounded-xl shadow-sm border-l-4 border-teal-500 p-4">
+                    <div class="flex items-center gap-3"><i data-lucide="message-square" class="w-5 h-5 text-teal-500 shrink-0"></i><div><div class="text-2xl font-bold text-gray-900" id="v-msgs-hoy">&mdash;</div><div class="text-xs text-gray-500 mt-0.5">Mensajes hoy</div></div></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border-l-4 border-green-500 p-4">
+                    <div class="flex items-center gap-3"><i data-lucide="calendar-check" class="w-5 h-5 text-green-500 shrink-0"></i><div><div class="text-2xl font-bold text-gray-900" id="v-citas-mes">&mdash;</div><div class="text-xs text-gray-500 mt-0.5">Citas este mes</div></div></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border-l-4 border-amber-500 p-4">
+                    <div class="flex items-center gap-3"><i data-lucide="zap" class="w-5 h-5 text-amber-500 shrink-0"></i><div><div class="text-2xl font-bold text-gray-900" id="v-avg-ms">&mdash;</div><div class="text-xs text-gray-500 mt-0.5">Resp. media (ms)</div></div></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border-l-4 border-purple-500 p-4">
+                    <div class="flex items-center gap-3"><i data-lucide="users" class="w-5 h-5 text-purple-500 shrink-0"></i><div><div class="text-2xl font-bold text-gray-900" id="v-activas">&mdash;</div><div class="text-xs text-gray-500 mt-0.5">Conv. activas</div></div></div>
+                </div>
             </div>
-            <div class="bg-white rounded-lg shadow p-6 text-sm text-gray-600 space-y-1" id="metrics-detail"></div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-sm text-gray-600 space-y-1" id="metrics-detail"></div>
         </div>
 
+        </main>
     </div>
 </div>
 
-<script>
-const API = window.location.origin;
-let token = sessionStorage.getItem('admin_token');
-let userRole = sessionStorage.getItem('admin_role');
-let tenantId = sessionStorage.getItem('admin_tenant_id') || null;
-let superAdminToken = sessionStorage.getItem('super_admin_token') || null;
-let botActivo = false;
-let convRefreshInterval = null;
-let dashboardRefreshInterval = null;
-let tenantsCache = [];
-
-// ===== SECURITY: HTML ESCAPE =====
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, char => map[char]);
-}
-
-// ===== API =====
-async function apiCall(method, path, body) {
-    const opts = { method, headers: {} };
-    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
-    if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-    const res = await fetch(API + path, opts);
-    if (res.status === 401) { logout(); throw new Error('No autorizado'); }
-    if (res.status === 204) return null;
-    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Error del servidor'); }
-    return res.json();
-}
-function showMsg(type, text) {
-    const ok = document.getElementById('msg-ok'), err = document.getElementById('msg-err');
-    ok.classList.add('hidden'); err.classList.add('hidden');
-    const el = type === 'ok' ? ok : err;
-    el.textContent = text; el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 4000);
-}
-
-// ===== AUTH =====
-async function login() {
-    const user = document.getElementById('login-user').value.trim();
-    const pass = document.getElementById('login-pass').value;
-    const errEl = document.getElementById('login-error');
-    errEl.classList.add('hidden');
-    try {
-        const data = await apiCall('POST', '/admin/login', { username: user, password: pass });
-        token = data.access_token; userRole = data.role; tenantId = data.tenant_id || null;
-        sessionStorage.setItem('admin_token', token);
-        sessionStorage.setItem('admin_role', userRole);
-        sessionStorage.setItem('admin_tenant_id', tenantId || '');
-        showDashboard();
-    } catch (e) { errEl.textContent = e.message; errEl.classList.remove('hidden'); }
-}
-function logout() {
-    token = null; userRole = null; tenantId = null; superAdminToken = null;
-    sessionStorage.clear(); clearInterval(convRefreshInterval);
-    document.getElementById('login-section').classList.remove('hidden');
-    document.getElementById('dashboard-section').classList.add('hidden');
-}
-
-// ===== IMPERSONACION =====
-async function impersonateTenant(tid, tenantName) {
-    try {
-        const data = await apiCall('POST', '/admin/impersonate/' + tid);
-        superAdminToken = token;
-        sessionStorage.setItem('super_admin_token', superAdminToken);
-        token = data.access_token; userRole = data.role; tenantId = data.tenant_id;
-        sessionStorage.setItem('admin_token', token);
-        sessionStorage.setItem('admin_role', userRole);
-        sessionStorage.setItem('admin_tenant_id', tenantId || '');
-        document.getElementById('banner-tenant-name').textContent = tenantName;
-        document.getElementById('impersonation-banner').classList.remove('hidden');
-        renderTabsForRole(); await loadTenant(); showTab('datos');
-    } catch(e) { showMsg('err', e.message); }
-}
-function stopImpersonating() {
-    token = superAdminToken; superAdminToken = null;
-    userRole = 'super_admin'; tenantId = null;
-    sessionStorage.setItem('admin_token', token);
-    sessionStorage.setItem('admin_role', userRole);
-    sessionStorage.setItem('admin_tenant_id', '');
-    sessionStorage.removeItem('super_admin_token');
-    document.getElementById('impersonation-banner').classList.add('hidden');
-    document.getElementById('nav-nombre').textContent = '';
-    renderTabsForRole(); showTab('tenants'); loadTenants();
-}
-
-// ===== DASHBOARD =====
-async function showDashboard() {
-    document.getElementById('login-section').classList.add('hidden');
-    document.getElementById('dashboard-section').classList.remove('hidden');
-    if (superAdminToken) document.getElementById('impersonation-banner').classList.remove('hidden');
-    renderTabsForRole();
-    if (userRole === 'super_admin' && !tenantId) {
-        const badge = document.getElementById('nav-role-badge');
-        badge.textContent = 'Super Admin';
-        badge.className = 'ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700';
-        await loadTenants(); showTab('tenants');
-    } else {
-        await loadTenant(); showTab('datos');
-    }
-}
-function renderTabsForRole() {
-    const isSuperOnly = userRole === 'super_admin' && !tenantId;
-    const hasTenant = !!tenantId;
-    const isSuperWithTenant = userRole === 'super_admin' && hasTenant;
-    const show = (id, v) => { const el = document.getElementById('tab-btn-' + id); if (el) el.classList.toggle('hidden', !v); };
-    show('tenants', isSuperOnly); show('usuarios', isSuperOnly);
-    show('datos', hasTenant); show('google', isSuperWithTenant);
-    show('conversaciones', hasTenant); show('dashboard', hasTenant);
-}
-const ALL_TABS = ['tenants','usuarios','datos','google','conversaciones','dashboard'];
-function showTab(name) {
-    ALL_TABS.forEach(t => {
-        document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
-        const btn = document.getElementById('tab-btn-' + t);
-        if (!btn || btn.classList.contains('hidden')) return;
-        btn.classList.remove('text-blue-600','border-b-2','border-blue-600','text-gray-500','hover:text-gray-700');
-        if (t === name) btn.classList.add('text-blue-600','border-b-2','border-blue-600');
-        else btn.classList.add('text-gray-500','hover:text-gray-700');
-    });
-    clearInterval(convRefreshInterval); convRefreshInterval = null;
-    clearInterval(dashboardRefreshInterval); dashboardRefreshInterval = null;
-    if (name === 'conversaciones') { loadConversations(1); convRefreshInterval = setInterval(() => loadConversations(1), 10000); }
-    if (name === 'dashboard') { loadMetrics(); dashboardRefreshInterval = setInterval(() => loadMetrics(), 10000); }
-    if (name === 'tenants') loadTenants();
-    if (name === 'usuarios') loadUsers();
-}
-
-// ===== TENANT DATA =====
-async function loadTenant() {
-    const t = await apiCall('GET', '/admin/tenant');
-    document.getElementById('nav-nombre').textContent = '\u2014 ' + t.nombre_negocio;
-    const badge = document.getElementById('nav-role-badge');
-    if (userRole === 'super_admin') { badge.textContent = 'Super Admin'; badge.className = 'ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700'; }
-    else { badge.textContent = 'Tenant Admin'; badge.className = 'ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700'; }
-    document.getElementById('f-nombre').value = t.nombre_negocio;
-    document.getElementById('f-email').value = t.email_notificaciones;
-    botActivo = t.bot_activo; updateBotToggle();
-    document.getElementById('f-rate-limit').value = t.rate_limit_per_minute;
-    document.getElementById('f-max-citas').value = t.max_citas_activas;
-    document.getElementById('f-calendar-id').value = t.google_calendar_id || '';
-    document.getElementById('f-token-expiry').value = t.google_token_expiry
-        ? new Date(t.google_token_expiry).toLocaleString('es-ES') : 'Sin configurar';
-    const s = document.getElementById('google-status');
-    s.textContent = t.has_google_credentials ? 'Credenciales configuradas' : 'Sin credenciales Google configuradas';
-    s.className = 'text-sm p-3 rounded mb-2 ' + (t.has_google_credentials ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700');
-}
-function toggleBot() {
-    if (botActivo && !confirm('Desactivar el bot? Los mensajes llegaran pero no se respondera automaticamente.')) return;
-    botActivo = !botActivo; updateBotToggle();
-}
-function updateBotToggle() {
-    const btn = document.getElementById('f-bot-toggle'), dot = btn.querySelector('span');
-    btn.className = 'w-12 h-6 rounded-full relative transition-colors duration-200 ' + (botActivo ? 'bg-green-500' : 'bg-gray-300');
-    dot.style.left = botActivo ? '26px' : '2px';
-}
-async function saveDatos() {
-    try {
-        await apiCall('PUT', '/admin/tenant', {
-            nombre_negocio: document.getElementById('f-nombre').value.trim(),
-            email_notificaciones: document.getElementById('f-email').value.trim(),
-            bot_activo: botActivo,
-            rate_limit_per_minute: parseInt(document.getElementById('f-rate-limit').value) || 10,
-            max_citas_activas: parseInt(document.getElementById('f-max-citas').value) || 5,
-        });
-        await loadTenant(); showMsg('ok', 'Datos guardados correctamente');
-    } catch (e) { showMsg('err', e.message); }
-}
-async function saveGoogle() {
-    const body = { google_calendar_id: document.getElementById('f-calendar-id').value.trim() };
-    const at = document.getElementById('f-access-token').value.trim();
-    const rt = document.getElementById('f-refresh-token').value.trim();
-    if (at) body.google_access_token = at;
-    if (rt) body.google_refresh_token = rt;
-    try {
-        await apiCall('PUT', '/admin/tenant', body);
-        document.getElementById('f-access-token').value = '';
-        document.getElementById('f-refresh-token').value = '';
-        await loadTenant(); showMsg('ok', 'Credenciales Google guardadas');
-    } catch (e) { showMsg('err', e.message); }
-}
-
-// ===== SUPER ADMIN: TENANTS =====
-async function loadTenants() {
-    try {
-        const data = await apiCall('GET', '/superadmin/tenants');
-        tenantsCache = data.tenants;
-        const tbody = document.getElementById('tenants-table');
-        if (!data.tenants.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">Sin tenants</td></tr>';
-            return;
-        }
-        tbody.innerHTML = data.tenants.map(function(t) {
-            const botB = t.bot_activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500';
-            const botTxt = t.bot_activo ? 'Activo' : 'Inactivo';
-            const escId = escapeHtml(t.id);
-            const escName = escapeHtml(t.nombre_negocio);
-            const escSlug = escapeHtml(t.slug);
-            return '<tr class="border-b hover:bg-gray-50">'
-                + '<td class="py-2 pr-4 font-mono text-xs">' + escSlug + '</td>'
-                + '<td class="py-2 pr-4">' + escName + '</td>'
-                + '<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs ' + botB + '">' + botTxt + '</span></td>'
-                + '<td class="py-2 pr-4 text-gray-500 text-xs">' + new Date(t.created_at).toLocaleDateString('es-ES') + '</td>'
-                + '<td class="py-2"><button onclick="impersonateTenant(\'' + escId + '\',\'' + escName + '\')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Gestionar</button></td>'
-                + '</tr>';
-        }).join('');
-    } catch(e) { showMsg('err', e.message); }
-}
-function showCreateTenantForm() { document.getElementById('create-tenant-form').classList.remove('hidden'); }
-function hideCreateTenantForm() { document.getElementById('create-tenant-form').classList.add('hidden'); }
-async function createTenant() {
-    const slug = document.getElementById('nt-slug').value.trim();
-    const nombre = document.getElementById('nt-nombre').value.trim();
-    const email = document.getElementById('nt-email').value.trim();
-    const phoneId = document.getElementById('nt-phone-id').value.trim();
-    if (!slug || !nombre || !email || !phoneId) { showMsg('err', 'Todos los campos son obligatorios'); return; }
-    try {
-        await apiCall('POST', '/superadmin/tenants', {
-            slug: slug, nombre_negocio: nombre, email_notificaciones: email, whatsapp_phone_number_id: phoneId
-        });
-        hideCreateTenantForm();
-        ['nt-slug','nt-nombre','nt-email','nt-phone-id'].forEach(function(id) { document.getElementById(id).value = ''; });
-        await loadTenants(); showMsg('ok', "Tenant '" + slug + "' creado");
-    } catch(e) { showMsg('err', e.message); }
-}
-
-// ===== SUPER ADMIN: USUARIOS =====
-async function loadUsers() {
-    try {
-        const users = await apiCall('GET', '/superadmin/users');
-        const sel = document.getElementById('nu-tenant');
-        sel.innerHTML = '<option value="">Selecciona tenant...</option>'
-            + tenantsCache.map(function(t) { return '<option value="' + t.id + '">' + t.nombre_negocio + ' (' + t.slug + ')</option>'; }).join('');
-        const tbody = document.getElementById('users-table');
-        if (!users.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-400">Sin usuarios</td></tr>';
-            return;
-        }
-        const tenantMap = {};
-        tenantsCache.forEach(function(t) { tenantMap[t.id] = t.slug; });
-        tbody.innerHTML = users.map(function(u) {
-            const rolB = u.role === 'super_admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
-            const rolTxt = u.role === 'super_admin' ? 'Super Admin' : 'Tenant Admin';
-            const slug = u.tenant_id ? (tenantMap[u.tenant_id] || u.tenant_id.slice(0,8)) : '\u2014';
-            const escId = escapeHtml(u.id);
-            const escUsername = escapeHtml(u.username);
-            const escEmail = escapeHtml(u.email || '');
-            const del = u.role !== 'super_admin'
-                ? '<button onclick="deleteUser(\'' + escId + '\',\'' + escUsername + '\')" class="text-red-500 hover:text-red-700 text-xs">Eliminar</button>'
-                : '<span class="text-gray-300 text-xs">\u2014</span>';
-            return '<tr class="border-b hover:bg-gray-50">'
-                + '<td class="py-2 pr-4 font-medium">' + escUsername + '</td>'
-                + '<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs ' + rolB + '">' + rolTxt + '</span></td>'
-                + '<td class="py-2 pr-4 font-mono text-xs">' + slug + '</td>'
-                + '<td class="py-2 pr-4 text-gray-500 text-xs">' + (escEmail || '\u2014') + '</td>'
-                + '<td class="py-2 pr-4 text-gray-500 text-xs">' + new Date(u.created_at).toLocaleDateString('es-ES') + '</td>'
-                + '<td class="py-2">' + del + '</td></tr>';
-        }).join('');
-    } catch(e) { showMsg('err', e.message); }
-}
-function showCreateUserForm() {
-    if (!tenantsCache.length) { showMsg('err', 'Carga la lista de tenants primero (tab Tenants)'); return; }
-    document.getElementById('create-user-form').classList.remove('hidden');
-}
-function hideCreateUserForm() { document.getElementById('create-user-form').classList.add('hidden'); }
-async function createUser() {
-    const username = document.getElementById('nu-username').value.trim();
-    const password = document.getElementById('nu-password').value;
-    const email = document.getElementById('nu-email').value.trim();
-    const tid = document.getElementById('nu-tenant').value;
-    if (!username || !password || !tid) { showMsg('err', 'Username, contrasena y tenant son obligatorios'); return; }
-    try {
-        await apiCall('POST', '/superadmin/users', { username: username, password: password, tenant_id: tid, email: email || null });
-        hideCreateUserForm();
-        ['nu-username','nu-password','nu-email'].forEach(function(id) { document.getElementById(id).value = ''; });
-        document.getElementById('nu-tenant').value = '';
-        await loadUsers(); showMsg('ok', "Usuario '" + username + "' creado");
-    } catch(e) { showMsg('err', e.message); }
-}
-async function deleteUser(userId, username) {
-    if (!confirm("Eliminar usuario '" + username + "'? Esta accion no se puede deshacer.")) return;
-    try {
-        await apiCall('DELETE', '/superadmin/users/' + userId);
-        await loadUsers(); showMsg('ok', "Usuario '" + username + "' eliminado");
-    } catch(e) { showMsg('err', e.message); }
-}
-
-// ===== CONVERSACIONES =====
-async function loadConversations(page) {
-    try {
-        const data = await apiCall('GET', '/admin/conversations?page=' + page + '&page_size=15');
-        const tbody = document.getElementById('conv-table');
-        if (!data.conversations.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">Sin conversaciones</td></tr>';
-        } else {
-            tbody.innerHTML = data.conversations.map(function(c) {
-                const b = c.estado === 'ACTIVA' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500';
-                const escId = escapeHtml(c.id);
-                const escPhone = escapeHtml(c.wa_phone);
-                const escName = escapeHtml(c.nombre_paciente || '');
-                return '<tr class="border-b hover:bg-gray-50">'
-                    + '<td class="py-2 pr-4 font-mono">' + escPhone + '</td>'
-                    + '<td class="py-2 pr-4">' + (escName || '\u2014') + '</td>'
-                    + '<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs font-medium ' + b + '">' + c.estado + '</span></td>'
-                    + '<td class="py-2 pr-4 text-gray-500">' + new Date(c.ultimo_mensaje_at).toLocaleString('es-ES') + '</td>'
-                    + '<td class="py-2"><button onclick="viewMessages(\'' + escId + '\',\'' + escPhone + '\')" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Ver</button></td></tr>';
-            }).join('');
-        }
-        const tp = Math.ceil(data.total / data.page_size) || 1;
-        document.getElementById('conv-pagination').innerHTML =
-            '<span class="text-gray-500">' + data.total + ' conversaciones</span>'
-            + '<div class="space-x-2">'
-            + '<button onclick="loadConversations(' + (page-1) + ')" ' + (page<=1?'disabled':'') + ' class="px-3 py-1 rounded border ' + (page<=1?'text-gray-300':'hover:bg-gray-100') + '">Anterior</button>'
-            + '<span class="text-gray-500">' + page + ' / ' + tp + '</span>'
-            + '<button onclick="loadConversations(' + (page+1) + ')" ' + (page>=tp?'disabled':'') + ' class="px-3 py-1 rounded border ' + (page>=tp?'text-gray-300':'hover:bg-gray-100') + '">Siguiente</button>'
-            + '</div>';
-    } catch (e) { showMsg('err', e.message); }
-}
-async function viewMessages(convId, phone) {
-    document.getElementById('msg-phone').textContent = phone;
-    try {
-        const data = await apiCall('GET', '/admin/conversations/' + convId + '/messages');
-        const list = document.getElementById('messages-list');
-        list.innerHTML = data.messages.map(function(m) {
-            const u = m.role === 'user';
-            const escContent = escapeHtml(m.content);
-            const escIntent = escapeHtml(m.intent || '');
-            return '<div class="flex ' + (u?'justify-start':'justify-end') + '">'
-                + '<div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg text-sm ' + (u?'bg-gray-200 text-gray-800':'bg-blue-600 text-white') + '">'
-                + '<p>' + escContent + '</p>'
-                + '<div class="text-xs mt-1 ' + (u?'text-gray-400':'text-blue-200') + '">'
-                + new Date(m.created_at).toLocaleTimeString('es-ES') + (escIntent ? ' \u2014 ' + escIntent : '')
-                + '</div></div></div>';
-        }).join('');
-        document.getElementById('messages-panel').classList.remove('hidden');
-        list.scrollTop = list.scrollHeight;
-    } catch (e) { showMsg('err', e.message); }
-}
-function closeMessages() { document.getElementById('messages-panel').classList.add('hidden'); }
-
-// ===== METRICAS =====
-async function loadMetrics() {
-    try {
-        const d = await apiCall('GET', '/admin/metrics');
-        document.getElementById('v-msgs-hoy').textContent = d.mensajes_hoy;
-        document.getElementById('v-citas-mes').textContent = d.citas_agendadas_mes;
-        document.getElementById('v-avg-ms').textContent = d.avg_processing_ms || '\u2014';
-        document.getElementById('v-activas').textContent = d.conversaciones_activas;
-        document.getElementById('metrics-detail').innerHTML =
-            '<p>Mensajes esta semana: <strong>' + d.mensajes_semana + '</strong></p>'
-            + '<p>Cancelaciones este mes: <strong>' + d.citas_canceladas_mes + '</strong> &nbsp;|&nbsp; Derivaciones: <strong>' + d.derivaciones_mes + '</strong></p>';
-    } catch (e) { showMsg('err', e.message); }
-}
-
-// ===== INIT =====
-if (token && userRole) { showDashboard(); }
-</script>
+<!-- Modal confirmacion -->
+<div id="confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4">
+        <h3 id="confirm-title" class="text-lg font-semibold text-gray-900 mb-2"></h3>
+        <p id="confirm-text" class="text-sm text-gray-600 mb-6"></p>
+        <div class="flex justify-end gap-3">
+            <button onclick="closeConfirmModal(false)" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">Cancelar</button>
+            <button id="confirm-action-btn" onclick="closeConfirmModal(true)" class="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors">Confirmar</button>
+        </div>
+    </div>
+</div>
+<script src="/static/admin.js"></script>
 </body>
 </html>

@@ -1,0 +1,54 @@
+/* Attendoo — CSS compartido (admin + landing)
+   Design tokens, colores WhatsApp, componentes comunes */
+
+/* ===== Design tokens ===== */
+:root {
+  --brand:   #16A34A;   /* green-600  — CTA, botones primarios */
+  --accent:  #0D9488;   /* teal-600   — links, bordes activos, secundario */
+  --sidebar: #1F2937;   /* gray-800   — sidebar oscuro */
+  --bg-base: #F9FAFB;   /* gray-50    — fondo base cálido */
+}
+
+/* ===== WhatsApp brand colors ===== */
+.wa-green { background-color: #075E54; }
+.wa-green-light { background-color: #25D366; }
+.wa-bubble-out { background-color: #DCF8C6; border-radius: 18px 18px 4px 18px; }
+.wa-bubble-in  { background-color: #FFFFFF; border-radius: 18px 18px 18px 4px; }
+
+/* ===== Brand gradient (hero + CTA) ===== */
+.gradient-hero { background: linear-gradient(135deg, #0D9488 0%, #16A34A 60%, #22C55E 100%); }
+
+/* ===== Shared components ===== */
+.btn-primary {
+  background-color: var(--brand);
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+.btn-primary:hover { background-color: #15803D; }
+
+.btn-secondary {
+  background-color: #E5E7EB;
+  color: #374151;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+.btn-secondary:hover { background-color: #D1D5DB; }
+
+.card {
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  border: 1px solid #E5E7EB;
+  padding: 1.5rem;
+}
+
+/* ===== Print ===== */
+@media print {
+  .no-print { display: none !important; }
+  body { font-size: 12px; }
+}
