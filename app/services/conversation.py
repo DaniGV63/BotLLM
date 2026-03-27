@@ -143,14 +143,13 @@ async def append_message(
 async def reset_conversation(
     conversation: Conversation, db: AsyncSession
 ) -> Conversation:
-    """Resetea conversacion expirada: limpia nombre y cache Redis."""
+    """Resetea conversacion expirada: limpia historial pero conserva nombre."""
     log = logger.bind(
         tenant_id=str(conversation.tenant_id),
         wa_phone=conversation.wa_phone,
     )
 
-    # Reusar fila (UniqueConstraint impide crear nueva para mismo tenant+phone)
-    conversation.nombre_paciente = None
+    # Reusar fila. nombre_paciente se conserva: el bot debe recordar al paciente.
     conversation.estado = ConversationState.ACTIVA.value
     await db.flush()
 
@@ -167,3 +166,54 @@ async def reset_conversation(
 
     log.info("conversation_reset", conversation_id=str(conversation.id))
     return conversation
+
+
+async def deactivate_conversation(
+    conversation: Conversation, db: AsyncSession
+) -> None:
+    """Marca la conversacion como INACTIVA (despedida o timeout 24h).
+
+    Conserva mensajes en PG (auditoria) y nombre del paciente.
+    Solo limpia la cache Redis para liberar memoria.
+    """
+    log = logger.bind(
+        tenant_id=str(conversation.tenant_id),
+        wa_phone=conversation.wa_phone,
+    )
+    conversation.estado = ConversationState.INACTIVA.value
+    await db.flush()
+
+    redis = await get_redis()
+    key = _redis_key(conversation.tenant_id, conversation.wa_phone)
+    await redis.delete(key)
+
+    log.info("conversation_deactivated", conversation_id=str(conversation.id))
+
+
+async def reactivate_conversation(
+    conversation: Conversation, db: AsyncSession
+) -> None:
+    """Reactiva una conversacion INACTIVA cuando llega un nuevo mensaje.
+
+    Limpia el historial de mensajes para que el LLM empiece con contexto limpio,
+    pero conserva el nombre del paciente.
+    """
+    log = logger.bind(
+        tenant_id=str(conversation.tenant_id),
+        wa_phone=conversation.wa_phone,
+    )
+    conversation.estado = ConversationState.ACTIVA.value
+    await db.flush()
+
+    # Borrar mensajes antiguos de PG (el LLM no debe ver contexto de otra visita)
+    await db.execute(
+        delete(Message).where(Message.conversation_id == conversation.id)
+    )
+    await db.flush()
+
+    # Limpiar cache Redis
+    redis = await get_redis()
+    key = _redis_key(conversation.tenant_id, conversation.wa_phone)
+    await redis.delete(key)
+
+    log.info("conversation_reactivated", conversation_id=str(conversation.id))

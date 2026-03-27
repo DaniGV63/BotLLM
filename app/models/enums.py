@@ -3,7 +3,7 @@ import enum
 
 class ConversationState(str, enum.Enum):
     ACTIVA = "ACTIVA"
-    DESPEDIDA = "DESPEDIDA"
+    INACTIVA = "INACTIVA"
 
 
 class MessageRole(str, enum.Enum):
