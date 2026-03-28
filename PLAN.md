@@ -38,7 +38,7 @@ solo clasifica y redacta — nunca decide disponibilidad ni ejecuta acciones.
 | 3 | LLM instanciado por llamada | Nueva instancia en cada invocación | Singleton por provider en llm_client.py |
 | 4 | JSONB sin schema | estado_datos era dict libre | Sin estado parcial. Pydantic para respuestas del LLM |
 | 5 | Dual write sin orden | Redis + PG sin transacción | PG fuente de verdad. PG primero, Redis después |
-| 6 | Estados como strings | Typo fallaba silenciosamente | Enum (ACTIVA, DESPEDIDA) |
+| 6 | Estados como strings | Typo fallaba silenciosamente | Enum (ACTIVA, INACTIVA) |
 | 7 | Handlers mezclan lógica con I/O | Imposible testear | Separar decisión de ejecución |
 | 8 | Flujo rígido al inicio | "¿Cómo te llamas?" obligatorio | Responder directamente. Nombre solo cuando hace falta |
 | 9 | LLM decide disponibilidad | Alucinaciones de horarios | Código consulta Calendar, LLM solo redacta |
@@ -108,7 +108,7 @@ Paciente: "Sí"
 - **Nombre**: solo se pide cuando necesario (agendar, cancelar). Se guarda y no se repide
 - **RGPD**: línea de consentimiento en el PRIMER mensaje de conversación nueva
 - **Mensajes no texto**: "Solo puedo leer mensajes de texto" — no llama al LLM
-- **Expiración**: sin actividad > 24h → resetear conversación
+- **Expiración**: sin actividad > 24h o despedida → INACTIVA. Siguiente mensaje → reactivar (historial limpio, nombre conservado)
 - **Error de sistema**: fallback + derivar a humano automáticamente
 - **Safety net**: el código valida confirmación antes de ejecutar action
 
@@ -193,26 +193,37 @@ Attendoo/
 │   ├── models/
 │   │   ├── __init__.py
 │   │   ├── tenant.py                  ← modelo Tenant
-│   │   ├── conversation.py            ← ACTIVA / DESPEDIDA (Enum)
+│   │   ├── conversation.py            ← modelo Conversation
+│   │   ├── enums.py                   ← ConversationState (ACTIVA/INACTIVA), MessageRole
 │   │   └── message.py                 ← role: user/assistant, intent, action
 │   ├── schemas/
 │   │   ├── __init__.py
-│   │   └── llm.py                     ← LLMResponse, ActionCreate, ActionModify, etc.
+│   │   ├── llm.py                     ← LLMResponse, ActionCreate, ActionModify, etc.
+│   │   └── admin.py                   ← TenantRead, TenantOnboardingStatus, etc.
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── llm_client.py             ← wrapper: OpenAIClient + GeminiClient + singleton
 │   │   ├── llm_service.py            ← detect_intent() + generate_response()
 │   │   ├── calendar_service.py       ← get_free_slots, get/create/modify/cancel appointment
 │   │   ├── agent.py                   ← orquestador (≤200 líneas)
-│   │   ├── conversation.py            ← historial Redis (20 msgs) + sync PG
+│   │   ├── conversation.py            ← historial + deactivate/reactivate
 │   │   ├── whatsapp_service.py       ← parse_incoming + send_text
-│   │   └── email_service.py          ← Gmail API send
+│   │   ├── email_service.py          ← Gmail API send
+│   │   └── backup_service.py         ← backup/restore V2 multi-tenant (JSON)
 │   └── routers/
 │       ├── __init__.py
 │       ├── webhook.py                 ← GET/POST webhook Meta
-│       └── admin.py                   ← panel admin (Fase 5, post-MVP)
+│       ├── admin.py                   ← panel admin (login, config, métricas)
+│       ├── superadmin.py              ← CRUD tenants, usuarios, onboarding status
+│       └── oauth.py                   ← flujo OAuth2 Google Calendar/Gmail
 ├── static/
-│   └── admin.html                     ← panel admin (Fase 5, post-MVP)
+│   ├── admin.html                     ← panel admin (template HTML)
+│   ├── admin.js                       ← lógica JS del panel admin
+│   └── attendoo.css                   ← estilos compartidos
+├── landing/
+│   └── index.html                     ← landing page comercial
+├── backup_tenant.py                   ← CLI: crear backup manual
+├── restore_tenant.py                  ← CLI: restaurar desde backup JSON
 └── tests/
     ├── conftest.py
     ├── test_webhook.py
@@ -423,6 +434,12 @@ async def append_message(
     action: str | None = None,
 ) -> None:
     """Guarda mensaje en PG (fuente de verdad) y actualiza Redis (caché)."""
+
+async def deactivate_conversation(conversation: Conversation, db: AsyncSession) -> None:
+    """Marca INACTIVA (despedida o timeout). Conserva nombre, limpia Redis."""
+
+async def reactivate_conversation(conversation: Conversation, db: AsyncSession) -> None:
+    """Reactiva INACTIVA → ACTIVA. Limpia historial PG+Redis, conserva nombre."""
 ```
 
 ### email_service.py — Gmail
@@ -458,8 +475,8 @@ CREATE TABLE tenants (
     google_refresh_token     TEXT,            -- encriptado Fernet
     google_token_expiry      TIMESTAMPTZ,
     bot_activo               BOOLEAN NOT NULL DEFAULT TRUE,
-    admin_username           VARCHAR(100) UNIQUE,
-    admin_password_hash      VARCHAR(200),
+    rate_limit_per_minute    INTEGER DEFAULT 20,
+    max_citas_activas        INTEGER DEFAULT 3,
     activo                   BOOLEAN NOT NULL DEFAULT TRUE,
     created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -467,6 +484,20 @@ CREATE TABLE tenants (
 ```
 
 Servicios, horarios, prompts NO están en BD. Viven en `prompts/*.md`.
+
+### Tabla `admin_users` (v1.1.0+)
+
+```sql
+CREATE TABLE admin_users (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id         UUID REFERENCES tenants(id) ON DELETE CASCADE,  -- NULL = super_admin
+    username          VARCHAR(100) UNIQUE NOT NULL,
+    password_hash     VARCHAR(200) NOT NULL,
+    role              VARCHAR(20) NOT NULL CHECK (role IN ('super_admin', 'tenant_admin')),
+    email             VARCHAR(200),
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
 
 ### Tabla `conversations`
 
@@ -477,7 +508,7 @@ CREATE TABLE conversations (
     wa_phone          VARCHAR(20) NOT NULL,
     nombre_paciente   VARCHAR(200),
     estado            VARCHAR(20) NOT NULL DEFAULT 'ACTIVA'
-                      CHECK (estado IN ('ACTIVA', 'DESPEDIDA')),
+                      CHECK (estado IN ('ACTIVA', 'INACTIVA')),  -- INACTIVA = despedida o >24h
     ultimo_mensaje_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -682,19 +713,35 @@ Cada fase = tag en GitHub. No saltar fases.
 □ git tag v0.4
 ```
 
-### FASE 5 — Panel admin (post-MVP) → `v0.5`
+### FASE 5 — Panel admin → `v1.1.0` ✅
 ```
-□ app/routers/admin.py
-□ static/admin.html
-□ git tag v0.5
+✅ app/routers/admin.py + superadmin.py (2 niveles: SuperAdmin + TenantAdmin)
+✅ static/admin.html + admin.js + attendoo.css
+✅ JWT con roles, impersonación, CRUD tenants/usuarios
+✅ Dashboard con métricas, auto-refresh
+✅ git tag v1.1.0
 ```
 
-### FASE 6 — Producción → `v1.0`
+### FASE 6 — Producción → `v1.0` ✅
 ```
-□ docker-compose.prod.yml + Nginx + Certbot
-□ Hetzner VPS + Cloudflare
-□ Todos los flujos desde móvil real
-□ git tag v1.0
+✅ docker-compose.prod.yml + Nginx + Certbot
+✅ deploy.sh para Hetzner VPS
+✅ Bot funcional con WhatsApp + Calendar + Gmail
+✅ git tag v1.0
+```
+
+### FASE 7 — Ciclo vida, OAuth, backup → `v1.2.0` ✅
+```
+✅ Estado DESPEDIDA → INACTIVA + deactivate/reactivate conversation
+✅ Acción "despedida" en prompt y agent
+✅ app/routers/oauth.py — flujo OAuth2 Google Calendar/Gmail por tenant
+✅ app/services/backup_service.py — backup V2 multi-tenant (JSON, auto al startup)
+✅ backup_tenant.py + restore_tenant.py — CLI
+✅ GET /superadmin/tenants/{id}/onboarding-status — checklist config
+✅ Refactor admin panel (HTML/JS/CSS separados)
+✅ Rename BotLLM → Attendoo en toda la codebase
+✅ Landing page mejorada
+✅ git tag v1.2.0
 ```
 
 ---

@@ -119,10 +119,24 @@ docker stats
 
 ---
 
-## 6. Backup de base de datos
+## 6. Backup y restauración
 
+### Backup automático (v1.2.0+)
+El backup se ejecuta automáticamente al arrancar uvicorn. Guarda tenants + admin_users + env keys en JSON con tokens desencriptados. Rotación: últimos 7 backups.
+
+### Backup manual (aplicación)
 ```bash
-# Backup manual
+# Desde el directorio del proyecto
+python backup_tenant.py
+# → backups/backup_full_YYYY-MM-DD_HHMMSS.json
+
+# Restaurar desde backup
+python restore_tenant.py backups/backup_full_YYYY-MM-DD_HHMMSS.json
+```
+
+### Backup raw PostgreSQL (dump completo)
+```bash
+# Backup
 docker compose -f docker-compose.prod.yml exec -T db \
   pg_dump -U fisiobot_prod fisiobot > backup_$(date +%Y%m%d).sql
 

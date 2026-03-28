@@ -331,9 +331,9 @@ async def handle_message(tenant_id, wa_phone, message_text, wa_message_id, db):
     # 1. Obtener o crear conversación
     conversation = await get_or_create_conversation(tenant_id, wa_phone, db)
     
-    # 2. Expiración: si >24h sin actividad, resetear
-    if expired(conversation):
-        conversation = await reset_conversation(conversation, db)
+    # 2. Si INACTIVA (despedida) o expirada (>24h) → reactivar
+    if conversation.estado == ConversationState.INACTIVA.value or expired(conversation):
+        await reactivate_conversation(conversation, db)
     
     # 3. Cargar historial
     history = await get_history(tenant_id, wa_phone)
@@ -373,6 +373,8 @@ async def handle_message(tenant_id, wa_phone, message_text, wa_message_id, db):
             await send_notification_email(
                 tenant_id, conversation.nombre_paciente, wa_phone, action.get("motivo", "")
             )
+        elif action["type"] == "despedida":
+            await deactivate_conversation(conversation, db)
     
     # 9. Persistir mensajes (PG primero, Redis después)
     await append_message(tenant_id, wa_phone, "user", message_text, intent=intent)
@@ -454,7 +456,7 @@ FALLBACK_MSG = (
 
 ## 9. REGLAS TRANSVERSALES
 
-1. **Expiración**: >24h sin actividad → estado DESPEDIDA. Siguiente mensaje = nueva conversación
+1. **Expiración/Despedida**: >24h sin actividad o acción "despedida" → estado INACTIVA. Siguiente mensaje → reactivar (historial limpio, nombre conservado)
 2. **Mensajes no-texto**: "Solo puedo leer mensajes de texto" — sin llamar al LLM
 3. **Error de sistema**: fallback + derivar a humano automáticamente
 4. **Deduplicación**: wa_message_id duplicado en BD → ignorar

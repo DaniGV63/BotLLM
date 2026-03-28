@@ -46,10 +46,23 @@ Attendoo/
 │       ├── llm_client.py           ← wrapper: OpenAIClient + GeminiClient + singleton
 │       ├── llm_service.py          ← detect_intent() + generate_response()
 │       ├── agent.py                ← orquestador (≤200 líneas)
-│       ├── conversation.py         ← historial Redis + sync PG
+│       ├── conversation.py         ← historial Redis + sync PG + ciclo vida (deactivate/reactivate)
 │       ├── calendar_service.py     ← get_free_slots, create/modify/cancel appointment
 │       ├── whatsapp_service.py     ← parse_incoming + send_text
-│       └── email_service.py        ← Gmail send
+│       ├── email_service.py        ← Gmail send
+│       └── backup_service.py       ← backup/restore multi-tenant (V2 JSON)
+│   └── routers/
+│       ├── webhook.py              ← GET/POST webhook Meta
+│       ├── admin.py                ← panel admin (login, config, métricas)
+│       ├── superadmin.py           ← CRUD tenants, usuarios, onboarding status
+│       └── oauth.py                ← flujo OAuth2 Google Calendar/Gmail
+├── static/
+│   ├── admin.html                  ← panel admin (template HTML)
+│   ├── admin.js                    ← lógica JS del panel admin
+│   └── attendoo.css                ← estilos compartidos
+├── landing/
+│   └── index.html                  ← landing page comercial
+├── backup_tenant.py, restore_tenant.py  ← scripts CLI backup/restore
 ├── seed.py, docker-compose.yml, Dockerfile, requirements.txt
 ```
 
@@ -60,12 +73,12 @@ Attendoo/
    - Para reiniciar contenedores: usar **`docker compose restart`** (preserva volúmenes).
    - Para reiniciar solo la app: matar el proceso uvicorn y relanzarlo.
    - Si hay conflicto de puertos: parar el contenedor/proceso que ocupa el puerto, **no recrear volúmenes**.
-   - Los datos de tenant (tokens WhatsApp, Google Calendar, etc.) viven solo en la BD — no hay backup automático. Destruirlos implica reconfiguración manual completa.
+   - Los datos de tenant (tokens WhatsApp, Google Calendar, etc.) viven en la BD con backup automático al startup. Restaurar con `python restore_tenant.py backups/<archivo>.json`.
 
 1. **MUY RECOMENDABLE no superar 300 líneas por archivo de programación** (`.py`, `.js`, `.ts`, etc.) — refactorizar si crece. Superar puntualmente está permitido si la alternativa rompe la cohesión del módulo, pero nunca superar 400 líneas bajo ningún concepto. Esta regla NO aplica a archivos de markup/template (`.html`, `.css`, `.md`).
 2. **LLM singleton** por provider en llm_client.py
 3. **PG es fuente de verdad** — PG primero, Redis después
-4. **Estados como Enum** — ACTIVA / DESPEDIDA, nunca strings sueltos
+4. **Estados como Enum** — ACTIVA / INACTIVA, nunca strings sueltos
 5. **tenant_id en toda función de servicio** — multi-tenant desde día 1
 6. **El LLM solo clasifica y redacta** — no decide disponibilidad, no ejecuta
 7. **Prompts en archivos .md** — no hardcodeados en código ni en BD
@@ -84,6 +97,7 @@ Webhook POST → validar HMAC → deduplicar → BackgroundTask:
   3. generate_response(message, intent, context, history) → JSON {message, action, nombre}
   4. Si action.type in (create, modify, cancel): safety net → ejecutar en Calendar
   5. Si action.type == "derivar": send_notification_email
+  6. Si action.type == "despedida": deactivate_conversation (INACTIVA)
   6. Persistir: PG primero, Redis después
   7. Enviar response.message por WhatsApp
 ```
@@ -118,12 +132,24 @@ DATABASE_URL=postgresql+asyncpg://...
 REDIS_URL=redis://...
 ENCRYPTION_KEY=             # Fernet
 META_APP_SECRET=
+GOOGLE_CLIENT_ID=           # OAuth2
+GOOGLE_CLIENT_SECRET=       # OAuth2
+BASE_URL=http://localhost:8000
 LOG_LEVEL=INFO
 ```
 
 ## FASE ACTUAL
 
-→ **Fase 6: Producción v1.0.1** (ver DEPLOY.md para guía completa)
+→ **v1.2.0** — Ciclo de vida conversaciones, OAuth, backup, rebrand Attendoo (ver DEPLOY.md para guía de despliegue)
+
+### Changelog v1.2.0
+- Estado DESPEDIDA → INACTIVA + deactivate/reactivate conversation
+- Acción "despedida" en prompt y agent
+- OAuth router para Google Calendar/Gmail por tenant
+- Backup/restore multi-tenant (automático al startup, CLI manual)
+- Admin panel refactorizado (HTML/JS/CSS separados)
+- Endpoint onboarding-status para checklist de configuración
+- Rename BotLLM → Attendoo en toda la codebase
 
 ## REFERENCIAS
 
