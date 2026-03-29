@@ -140,7 +140,15 @@ LOG_LEVEL=INFO
 
 ## FASE ACTUAL
 
-→ **v1.2.0** — Ciclo de vida conversaciones, OAuth, backup, rebrand Attendoo (ver DEPLOY.md para guía de despliegue)
+→ **v1.2.1** — Mejoras landing page (ver DEPLOY.md para guía de despliegue)
+
+### Changelog v1.2.1
+- Landing: nuevo headline hero "Recupera tiempo para lo que más te importa"
+- Landing: añadido enlace "Contacta" en navbar
+- Landing: hover con escala en tarjetas de beneficios (`hover:scale-[1.02]`)
+- Landing: icono WhatsApp nativo (SVG) en lugar de lucide en tarjeta "Sin apps nuevas"
+- Landing: scroll suave habilitado (`scroll-smooth` + `scroll-padding-top`)
+- Landing: copy más inclusivo ("clientes" en lugar de "pacientes" en sección beneficios)
 
 ### Changelog v1.2.0
 - Estado DESPEDIDA → INACTIVA + deactivate/reactivate conversation
@@ -155,6 +163,10 @@ LOG_LEVEL=INFO
 
 - **PLAN.md** — fases, BD, firmas de funciones, Docker, anti-patrones
 - **LOGICA.md** — prompts completos, wrapper LLM, safety net, flujo del orquestador
+- **DEPLOY.md** — guía de despliegue Hetzner
 - **prompts/negocio.md** — datos del fisio para el LLM
 - **prompts/intent_detection.md** — prompt de clasificación de intención
 - **prompts/response_generation.md** — prompt de generación de respuesta
+- **docs/BACKLOG.md** — backlog completo (26 tareas, bloques A-E), estado actual
+- **docs/PLAN_V1.3.0.md** — plan detallado derivación handoff + sesiones grupales (v1.3.0/v1.5.0)
+- **docs/SESSION_2026_03_29.md** — última sesión: decisiones arquitectura v1.3.0/v1.5.0
