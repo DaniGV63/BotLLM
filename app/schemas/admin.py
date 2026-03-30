@@ -36,6 +36,9 @@ class TenantRead(BaseModel):
     google_token_expiry: datetime | None
     has_google_credentials: bool
     created_at: datetime
+    plan: str
+    plan_expires_at: datetime | None
+    feature_overrides: dict
 
 
 class TenantUpdate(BaseModel):
@@ -50,6 +53,9 @@ class TenantUpdate(BaseModel):
     google_access_token: str | None = None
     google_refresh_token: str | None = None
     google_token_expiry: datetime | None = None
+    plan: str | None = None
+    plan_expires_at: datetime | None = None
+    feature_overrides: dict | None = None
 
 
 class TenantCreate(BaseModel):
@@ -59,6 +65,7 @@ class TenantCreate(BaseModel):
     whatsapp_phone_number_id: str
     whatsapp_verify_token: str | None = None
     bot_activo: bool = True
+    plan: str = "FREE_TRIAL"
 
 
 class TenantListItem(BaseModel):
@@ -69,6 +76,7 @@ class TenantListItem(BaseModel):
     bot_activo: bool
     activo: bool
     created_at: datetime
+    plan: str
 
 
 class TenantListResponse(BaseModel):
@@ -151,3 +159,21 @@ class MetricsResponse(BaseModel):
     derivaciones_mes: int
     avg_processing_ms: int | None
     conversaciones_activas: int
+
+
+# --- Features ---
+
+
+class FeatureInfo(BaseModel):
+    key: str
+    name: str
+    description: str
+    enabled: bool
+    status: str
+    stability: str
+
+
+class TenantFeaturesResponse(BaseModel):
+    plan: str
+    plan_expires_at: datetime | None
+    features: list[FeatureInfo]

@@ -3,6 +3,7 @@
 import asyncio
 import os
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
@@ -24,6 +25,7 @@ PRIMER_TENANT = {
     "whatsapp_phone_number_id": "1023364914199630",
     "whatsapp_verify_token": str(uuid.uuid4()),
     "bot_activo": True,
+    "plan": "FREE_TRIAL",
 }
 
 
@@ -43,6 +45,11 @@ async def seed() -> None:
             print(f"Tenant creado: slug='{tenant.slug}' id={tenant.id}")
         else:
             print(f"Tenant '{tenant.slug}' ya existe (id={tenant.id})")
+
+        if not tenant.plan_expires_at:
+            tenant.plan = "FREE_TRIAL"
+            tenant.plan_expires_at = datetime.now(timezone.utc) + timedelta(days=14)
+            await session.commit()
 
         # --- Super admin ---
         sa_result = await session.execute(

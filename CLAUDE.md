@@ -39,7 +39,7 @@ Attendoo/
 │   └── response_generation.md      ← prompt para generar respuesta (JSON mode)
 ├── app/
 │   ├── main.py
-│   ├── core/    (config, database, redis, security)
+│   ├── core/    (config, database, redis, security, features)
 │   ├── models/  (tenant, conversation, message)
 │   ├── schemas/ (llm.py → LLMResponse, ActionCreate, etc.)
 │   └── services/
@@ -55,6 +55,7 @@ Attendoo/
 │       ├── webhook.py              ← GET/POST webhook Meta
 │       ├── admin.py                ← panel admin (login, config, métricas)
 │       ├── superadmin.py           ← CRUD tenants, usuarios, onboarding status
+│       ├── admin_features.py       ← endpoints features (separado de admin.py)
 │       └── oauth.py                ← flujo OAuth2 Google Calendar/Gmail
 ├── static/
 │   ├── admin.html                  ← panel admin (template HTML)
@@ -84,6 +85,7 @@ Attendoo/
 7. **Prompts en archivos .md** — no hardcodeados en código ni en BD
 8. **Solo texto plano** en WhatsApp — nada de List Messages, Reply Buttons, Flows
 9. **SDK directo** — openai + google-genai, sin LangChain
+10. **Registro de features** — Toda feature nueva debe registrarse en `app/core/features.py` (FEATURE_REGISTRY) y en `FEATURES.md`. Feature key = dotted notation (`modulo.subfeature`). Asignacion de plan obligatoria.
 
 ## FLUJO DE CADA MENSAJE
 

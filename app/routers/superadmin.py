@@ -8,6 +8,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.features import (
+    FEATURE_REGISTRY,
+    get_tenant_features,
+    invalidate_feature_cache,
+)
 from app.core.security import hash_password
 from app.models.admin_user import AdminRole, AdminUser
 from app.models.tenant import Tenant
@@ -15,7 +20,9 @@ from app.routers.admin import TokenData, _tenant_to_read, require_super_admin
 from app.schemas.admin import (
     AdminUserCreate,
     AdminUserRead,
+    FeatureInfo,
     TenantCreate,
+    TenantFeaturesResponse,
     TenantListItem,
     TenantListResponse,
     TenantOnboardingStatus,
@@ -35,6 +42,7 @@ def _tenant_to_list_item(tenant: Tenant) -> TenantListItem:
         bot_activo=tenant.bot_activo,
         activo=tenant.activo,
         created_at=tenant.created_at,
+        plan=tenant.plan,
     )
 
 
@@ -201,3 +209,85 @@ async def get_onboarding_status(
         google_configured=google_ok,
         missing_steps=missing,
     )
+
+
+@router.get("/tenants/{tenant_id}/features", response_model=TenantFeaturesResponse)
+async def get_tenant_features_endpoint(
+    tenant_id: uuid.UUID,
+    _: TokenData = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+) -> TenantFeaturesResponse:
+    """Devuelve features de un tenant con estado de override."""
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    feature_map = await get_tenant_features(tenant_id, db)
+    features = [
+        FeatureInfo(
+            key=k,
+            name=FEATURE_REGISTRY[k].name,
+            description=FEATURE_REGISTRY[k].description,
+            enabled=v,
+            status=FEATURE_REGISTRY[k].status.value,
+            stability=FEATURE_REGISTRY[k].stability.value,
+        )
+        for k, v in feature_map.items()
+    ]
+    return TenantFeaturesResponse(
+        plan=tenant.plan,
+        plan_expires_at=tenant.plan_expires_at,
+        features=features,
+    )
+
+
+@router.put("/tenants/{tenant_id}/plan")
+async def update_tenant_plan(
+    tenant_id: uuid.UUID,
+    body: dict,
+    _: TokenData = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Cambia el plan de un tenant. Body: {"plan": "PAID"} o {"plan": "FREE_TRIAL", "plan_expires_at": "..."}."""
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    valid_plans = {"SIN_PLAN", "FREE_TRIAL", "PAID"}
+    new_plan = body.get("plan")
+    if new_plan not in valid_plans:
+        raise HTTPException(status_code=400, detail=f"Plan invalido. Opciones: {valid_plans}")
+
+    tenant.plan = new_plan
+    if "plan_expires_at" in body:
+        tenant.plan_expires_at = body["plan_expires_at"]
+    await db.commit()
+    await invalidate_feature_cache(tenant_id)
+    logger.info("tenant_plan_updated", tenant_id=str(tenant_id), plan=new_plan)
+    return {"ok": True, "plan": new_plan}
+
+
+@router.put("/tenants/{tenant_id}/features")
+async def update_tenant_feature_overrides(
+    tenant_id: uuid.UUID,
+    body: dict,
+    _: TokenData = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Actualiza feature overrides de un tenant. Body: {"calendar.schedule": true, "handoff.web_chat": false}."""
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    invalid_keys = [k for k in body if k not in FEATURE_REGISTRY]
+    if invalid_keys:
+        raise HTTPException(status_code=400, detail=f"Features desconocidas: {invalid_keys}")
+
+    tenant.feature_overrides = body
+    await db.commit()
+    await invalidate_feature_cache(tenant_id)
+    logger.info("tenant_features_updated", tenant_id=str(tenant_id), overrides=body)
+    return {"ok": True, "feature_overrides": body}

@@ -12,6 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 from app.core.config import settings
 from app.core.redis import close_redis
 from app.routers.admin import router as admin_router
+from app.routers.admin_features import router as admin_features_router
 from app.routers.oauth import router as oauth_router
 from app.routers.superadmin import router as superadmin_router
 from app.routers.webhook import router as webhook_router
@@ -71,6 +72,7 @@ app = FastAPI(
 
 app.include_router(webhook_router)
 app.include_router(admin_router)
+app.include_router(admin_features_router)
 app.include_router(superadmin_router)
 app.include_router(oauth_router)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")

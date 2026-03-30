@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.features import get_tenant_features
 from app.core.redis import acquire_lock
 from app.models.enums import ConversationState
 from app.models.tenant import Tenant
@@ -42,6 +43,11 @@ EXPIRATION_HOURS = 24
 FALLBACK_MSG = (
     "Disculpa, ha habido un problema tecnico. "
     "He avisado a la clinica para que te contacten lo antes posible."
+)
+
+FEATURE_NOT_AVAILABLE_MSG = (
+    "Esta funcionalidad no esta disponible en tu plan actual. "
+    "Contacta con nosotros para mas informacion."
 )
 
 CONFIRMATION_WORDS = {
@@ -153,6 +159,10 @@ async def handle_message(
         # 5. Preparar contexto segun intencion
         _t = await db.get(Tenant, tenant_id)
         max_citas = (_t.max_citas_activas if _t else None) or MAX_CITAS_ACTIVAS
+
+        # Feature check
+        features = await get_tenant_features(tenant_id, db)
+
         context: dict = {
             "business_info": load_prompt("negocio.md"),
             "current_datetime": _format_datetime_es(_now_madrid()),
@@ -161,11 +171,18 @@ async def handle_message(
         }
 
         if intent == "agendar_cita":
+            if not features.get("calendar.schedule", False):
+                await send_text(tenant_id, wa_phone, FEATURE_NOT_AVAILABLE_MSG, db)
+                return
             if (await count_active_appointments(tenant_id, wa_phone)) >= max_citas:
                 await send_text(tenant_id, wa_phone, MAX_CITAS_MSG, db)
                 return
             context["free_slots"] = await get_free_slots(tenant_id)
         elif intent in ("cancelar_cita", "modificar_cita"):
+            feature_key = "calendar.cancel" if intent == "cancelar_cita" else "calendar.modify"
+            if not features.get(feature_key, False):
+                await send_text(tenant_id, wa_phone, FEATURE_NOT_AVAILABLE_MSG, db)
+                return
             context["appointment"] = await get_appointment_by_phone(
                 tenant_id, wa_phone
             )
@@ -243,13 +260,16 @@ async def handle_message(
                     log.warning("safety_net_triggered", action=action_type)
 
             elif action_type == "derivar":
-                await send_notification_email(
-                    tenant_id,
-                    conversation.nombre_paciente,
-                    wa_phone,
-                    action.get("motivo", "Paciente quiere hablar con persona"),
-                )
-                action_executed = "derivar"
+                if not features.get("email.derivation", False):
+                    reply_text = FEATURE_NOT_AVAILABLE_MSG
+                else:
+                    await send_notification_email(
+                        tenant_id,
+                        conversation.nombre_paciente,
+                        wa_phone,
+                        action.get("motivo", "Paciente quiere hablar con persona"),
+                    )
+                    action_executed = "derivar"
 
             elif action_type == "despedida":
                 await deactivate_conversation(conversation, db)

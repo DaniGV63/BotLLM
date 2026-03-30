@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -42,6 +42,17 @@ class Tenant(Base):
     )
     activo: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="true"
+    )
+
+    # Plan y features
+    plan: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="SIN_PLAN"
+    )
+    plan_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    feature_overrides: Mapped[dict | None] = mapped_column(
+        JSONB, nullable=False, server_default="{}"
     )
 
     # Limites operacionales

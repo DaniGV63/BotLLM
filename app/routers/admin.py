@@ -32,6 +32,7 @@ from app.schemas.admin import (
     TenantRead,
     TenantUpdate,
 )
+from app.core.features import has_feature
 from app.services.email_service import send_bot_status_email
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -44,6 +45,9 @@ _SUPER_ONLY_FIELDS = {
     "google_access_token",
     "google_refresh_token",
     "google_token_expiry",
+    "plan",
+    "plan_expires_at",
+    "feature_overrides",
 }
 
 
@@ -130,6 +134,9 @@ def _tenant_to_read(tenant: Tenant) -> TenantRead:
         google_token_expiry=tenant.google_token_expiry,
         has_google_credentials=bool(tenant.google_access_token and tenant.google_refresh_token),
         created_at=tenant.created_at,
+        plan=tenant.plan,
+        plan_expires_at=tenant.plan_expires_at,
+        feature_overrides=tenant.feature_overrides or {},
     )
 
 
@@ -331,6 +338,8 @@ async def get_metrics(
     db: AsyncSession = Depends(get_db),
 ) -> MetricsResponse:
     """Métricas de actividad del tenant."""
+    if not await has_feature(tenant.id, "admin.metrics", db):
+        raise HTTPException(status_code=403, detail="Analiticas no disponibles en tu plan")
     today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     week_ago, month_start = today - timedelta(days=7), today.replace(day=1)
     tid = tenant.id
