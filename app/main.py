@@ -12,6 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 from app.core.config import settings
 from app.core.redis import close_redis
 from app.routers.admin import router as admin_router
+from app.routers.admin_chat import router as admin_chat_router
 from app.routers.admin_features import router as admin_features_router
 from app.routers.oauth import router as oauth_router
 from app.routers.superadmin import router as superadmin_router
@@ -56,7 +57,7 @@ async def _safe_backup() -> None:
 async def lifespan(app: FastAPI):
     setup_logging()
     logger = structlog.get_logger()
-    logger.info("attendoo_started", version="1.1.0")
+    logger.info("attendoo_started", version="1.3.0")
     asyncio.create_task(_safe_backup())
     yield
     await close_redis()
@@ -65,13 +66,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Attendoo",
-    version="1.1.0",
+    version="1.3.0",
     lifespan=lifespan,
 )
 
 
 app.include_router(webhook_router)
 app.include_router(admin_router)
+app.include_router(admin_chat_router)
 app.include_router(admin_features_router)
 app.include_router(superadmin_router)
 app.include_router(oauth_router)
