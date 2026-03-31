@@ -125,9 +125,9 @@ function renderTabsForRole() {
     const show = (id, v) => { const el = document.getElementById('tab-btn-' + id); if (el) el.classList.toggle('hidden', !v); };
     show('tenants', isSuperOnly); show('usuarios', isSuperOnly);
     show('configuracion', hasTenant); show('google', isSuperWithTenant);
-    show('conversaciones', hasTenant); show('dashboard', hasTenant);
+    show('conversaciones', hasTenant); show('dashboard', hasTenant); show('chat', hasTenant);
 }
-const ALL_TABS = ['tenants','usuarios','configuracion','google','conversaciones','dashboard'];
+const ALL_TABS = ['tenants','usuarios','configuracion','google','conversaciones','chat','dashboard'];
 function showTab(name) {
     ALL_TABS.forEach(t => {
         document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
@@ -141,6 +141,7 @@ function showTab(name) {
     clearInterval(dashboardRefreshInterval); dashboardRefreshInterval = null;
     if (name === 'conversaciones') { loadConversations(1); convRefreshInterval = setInterval(() => loadConversations(1), 10000); }
     if (name === 'dashboard') { loadMetrics(); dashboardRefreshInterval = setInterval(() => loadMetrics(), 10000); if (typeof lucide !== 'undefined') lucide.createIcons(); }
+    if (name === 'chat') { if (typeof initChat === 'function') initChat(); }
     if (name === 'tenants') loadTenants();
     if (name === 'usuarios') loadUsers();
     if (name === 'configuracion') loadTenant();
