@@ -9,11 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import SessionLocal, get_db
+from app.core.features import has_feature
 from app.core.redis import check_rate_limit, get_redis
 from app.core.security import decrypt, validate_meta_signature
 from app.models.message import Message
 from app.models.tenant import Tenant
 from app.services.agent import handle_message
+from app.services.wa_bridge_service import handle_therapist_message, is_therapist_phone
 from app.services.whatsapp_service import (
     get_tenant_by_phone_number_id,
     parse_incoming_webhook,
@@ -169,6 +171,20 @@ async def process_incoming_message(
                 )
                 await send_text(tenant_id, parsed["wa_phone"], reply, db)
                 return
+
+            # Detectar si el remitente es el fisio (WA bridge)
+            tenant_obj = await db.get(Tenant, tenant_id)
+            if tenant_obj and await has_feature(tenant_id, "handoff.wa_bridge", db):
+                if await is_therapist_phone(parsed["wa_phone"], tenant_obj, db):
+                    reply = await handle_therapist_message(
+                        wa_phone_fisio=parsed["wa_phone"],
+                        text=parsed["text"],
+                        tenant=tenant_obj,
+                        db=db,
+                    )
+                    if reply:
+                        await send_text(tenant_id, parsed["wa_phone"], reply, db)
+                    return
 
             # Mensajes de texto: delegar al agente
             await handle_message(
