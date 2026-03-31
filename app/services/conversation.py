@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.redis import get_redis
 from app.models.conversation import Conversation
-from app.models.enums import ConversationState
+from app.models.enums import ConversationState, MessageRole
 from app.models.message import Message
 
 logger = structlog.get_logger()
@@ -188,6 +188,38 @@ async def deactivate_conversation(
     await redis.delete(key)
 
     log.info("conversation_deactivated", conversation_id=str(conversation.id))
+
+
+async def append_therapist_message(
+    tenant_id: uuid.UUID,
+    wa_phone: str,
+    content: str,
+    sender_name: str,
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+) -> None:
+    """Guarda mensaje del fisioterapeuta en PG y actualiza Redis."""
+    log = logger.bind(tenant_id=str(tenant_id), wa_phone=wa_phone)
+
+    message = Message(
+        conversation_id=conversation_id,
+        tenant_id=tenant_id,
+        role=MessageRole.THERAPIST.value,
+        content=content,
+        sender_name=sender_name,
+    )
+    db.add(message)
+    await db.flush()
+    log.debug("therapist_message_persisted", sender=sender_name)
+
+    redis = await get_redis()
+    key = _redis_key(tenant_id, wa_phone)
+    cached = await redis.get(key)
+
+    history = json.loads(cached) if cached else []
+    history.append({"role": MessageRole.THERAPIST.value, "content": content})
+    history = history[-MAX_HISTORY:]
+    await redis.set(key, json.dumps(history), ex=HISTORY_TTL)
 
 
 async def reactivate_conversation(
