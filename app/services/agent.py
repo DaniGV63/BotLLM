@@ -31,7 +31,7 @@ from app.services.conversation import (
     get_or_create_conversation,
     reactivate_conversation,
 )
-from app.services.email_service import send_notification_email
+from app.services.email_service import send_cancellation_alert_email, send_notification_email
 from app.services.llm_service import detect_intent, generate_response, load_prompt
 from app.services.whatsapp_service import send_text
 
@@ -40,15 +40,8 @@ logger = structlog.get_logger()
 MADRID_TZ = ZoneInfo("Europe/Madrid")
 EXPIRATION_HOURS = 24
 
-FALLBACK_MSG = (
-    "Disculpa, ha habido un problema tecnico. "
-    "He avisado a la clinica para que te contacten lo antes posible."
-)
-
-FEATURE_NOT_AVAILABLE_MSG = (
-    "Esta funcionalidad no esta disponible en tu plan actual. "
-    "Contacta con nosotros para mas informacion."
-)
+FALLBACK_MSG = "Disculpa, ha habido un problema tecnico. He avisado a la clinica para que te contacten lo antes posible."
+FEATURE_NOT_AVAILABLE_MSG = "Esta funcionalidad no esta disponible en tu plan actual. Contacta con nosotros para mas informacion."
 
 CONFIRMATION_WORDS = {
     "si", "sí", "confirmo", "vale", "ok", "adelante",
@@ -117,6 +110,62 @@ async def _execute_action(action: dict, tenant_id: uuid.UUID, wa_phone: str) -> 
         )
 
 
+async def _handle_derivada_message(
+    conversation,
+    tenant_id: uuid.UUID,
+    wa_phone: str,
+    message_text: str,
+    wa_message_id: str,
+    db: AsyncSession,
+) -> None:
+    """Guarda mensaje del paciente en PG y notifica al fisio via WS (estado DERIVADA)."""
+    log = logger.bind(tenant_id=str(tenant_id), wa_phone=wa_phone)
+
+    await append_message(
+        tenant_id=tenant_id,
+        wa_phone=wa_phone,
+        role="user",
+        content=message_text,
+        db=db,
+        conversation_id=conversation.id,
+        wa_message_id=wa_message_id,
+    )
+    conversation.ultimo_mensaje_at = _now_madrid()
+    await db.commit()
+
+    # Notificar al fisio por WebSocket
+    try:
+        from app.services.websocket_manager import manager
+        await manager.broadcast_to_tenant(
+            str(tenant_id),
+            {
+                "type": "patient_message",
+                "conversation_id": str(conversation.id),
+                "content": message_text,
+                "timestamp": _now_madrid().isoformat(),
+            },
+        )
+    except Exception:
+        log.warning("ws_patient_message_push_failed")
+
+    log.info("derivada_message_stored", conversation_id=str(conversation.id))
+
+
+def _appointment_is_within_24h(appointment: dict | None) -> bool:
+    """True si la cita esta a menos de 24h del momento actual."""
+    dt_str = (appointment or {}).get("start") or (appointment or {}).get("datetime")
+    if not dt_str:
+        return False
+    try:
+        dt = datetime.fromisoformat(dt_str)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=MADRID_TZ)
+        diff = dt - _now_madrid()
+        return timedelta(0) <= diff <= timedelta(hours=24)
+    except Exception:
+        return False
+
+
 async def handle_message(
     tenant_id: uuid.UUID,
     wa_phone: str,
@@ -138,7 +187,15 @@ async def handle_message(
             tenant_id, wa_phone, db
         )
 
-        # 2. Si INACTIVA (paciente vuelve tras despedida) o expirada (>24h sin mensaje)
+        # 2a. Si DERIVADA → mensajes van al fisio via WS/WA, no al LLM
+        #     Aun asi guardamos el mensaje del paciente y lo retransmitimos por WS
+        if conversation.estado == ConversationState.DERIVADA.value:
+            await _handle_derivada_message(
+                conversation, tenant_id, wa_phone, message_text, wa_message_id, db
+            )
+            return
+
+        # 2b. Si INACTIVA (paciente vuelve tras despedida) o expirada (>24h sin mensaje)
         #    → reactivar: historial limpio, nombre conservado
         if conversation.estado == ConversationState.INACTIVA.value or _is_expired(conversation):
             log.info("conversation_reactivated", estado=conversation.estado)
@@ -244,6 +301,17 @@ async def handle_message(
                                 await _execute_action(action, tenant_id, wa_phone)
                                 action_executed = action_type
                                 log.info("action_executed", action=action_type)
+                                # Alerta cancelacion <24h
+                                if action_type == "cancel" and features.get("handoff.cancellation_alert", False):
+                                    appt = context.get("appointment")
+                                    if _appointment_is_within_24h(appt):
+                                        appt_dt = (appt or {}).get("start") or (appt or {}).get("datetime", "")
+                                        await send_cancellation_alert_email(
+                                            tenant_id,
+                                            conversation.nombre_paciente,
+                                            wa_phone,
+                                            appt_dt,
+                                        )
                             except Exception as e:
                                 log.error("action_error", action=action_type, error=str(e))
                                 reply_text = (
@@ -263,11 +331,14 @@ async def handle_message(
                 if not features.get("email.derivation", False):
                     reply_text = FEATURE_NOT_AVAILABLE_MSG
                 else:
-                    await send_notification_email(
-                        tenant_id,
-                        conversation.nombre_paciente,
-                        wa_phone,
-                        action.get("motivo", "Paciente quiere hablar con persona"),
+                    _t_obj = await db.get(Tenant, tenant_id)
+                    from app.services.derivation_service import derivate_conversation
+                    await derivate_conversation(
+                        conversation=conversation,
+                        tenant=_t_obj,
+                        motivo=action.get("motivo", "Paciente quiere hablar con persona"),
+                        history=history,
+                        db=db,
                     )
                     action_executed = "derivar"
 

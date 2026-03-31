@@ -71,6 +71,64 @@ async def send_notification_email(
         return False
 
 
+async def send_cancellation_alert_email(
+    tenant_id: uuid.UUID,
+    patient_name: str | None,
+    patient_phone: str,
+    appointment_datetime: str,
+) -> bool:
+    """Envia alerta al fisio cuando se cancela una cita con menos de 24h de antelacion.
+
+    Args:
+        tenant_id: UUID del tenant.
+        patient_name: Nombre del paciente.
+        patient_phone: Telefono WhatsApp del paciente.
+        appointment_datetime: Fecha/hora de la cita cancelada (ISO o legible).
+
+    Returns:
+        True si el email se envio correctamente.
+    """
+    log = logger.bind(tenant_id=str(tenant_id), wa_phone=patient_phone)
+    log.info("send_cancellation_alert_email_start", appointment=appointment_datetime)
+
+    try:
+        creds, tenant = await get_google_creds(tenant_id)
+    except ValueError as e:
+        log.error("cancellation_alert_no_creds", error=str(e))
+        return False
+
+    nombre_display = patient_name or "Desconocido"
+    body_text = (
+        f"ALERTA: Cancelacion con menos de 24h de antelacion.\n\n"
+        f"Nombre:   {nombre_display}\n"
+        f"Telefono: {patient_phone}\n"
+        f"Cita:     {appointment_datetime}\n\n"
+        f"La cita ha sido cancelada por el paciente a menos de 24 horas de la cita."
+    )
+
+    msg = MIMEText(body_text, "plain", "utf-8")
+    msg["To"] = tenant.email_notificaciones
+    msg["Subject"] = "[Attendoo] Cancelacion urgente <24h"
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+
+    gmail_service = await asyncio.to_thread(
+        build, "gmail", "v1", credentials=creds, cache_discovery=False
+    )
+
+    def _sync_send():
+        return gmail_service.users().messages().send(
+            userId="me", body={"raw": raw}
+        ).execute()
+
+    try:
+        result = await asyncio.to_thread(_sync_send)
+        log.info("cancellation_alert_sent", message_id=result.get("id"))
+        return True
+    except Exception as e:
+        log.error("cancellation_alert_error", error=str(e))
+        return False
+
+
 async def send_bot_status_email(tenant_id: uuid.UUID, activated: bool) -> None:
     """Notifica al fisio que el bot ha sido activado o desactivado."""
     try:
