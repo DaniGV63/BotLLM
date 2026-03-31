@@ -34,6 +34,7 @@ class AdminUser(Base):
     # Valores: AdminRole.SUPER_ADMIN | AdminRole.TENANT_ADMIN
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    wa_personal_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

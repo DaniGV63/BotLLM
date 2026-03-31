@@ -55,6 +55,12 @@ class Tenant(Base):
         JSONB, nullable=False, server_default="{}"
     )
 
+    # Handoff v1.3.0
+    wa_personal_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    derivation_timeout_minutes: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="60"
+    )
+
     # Limites operacionales
     rate_limit_per_minute: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="10"
