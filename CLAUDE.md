@@ -142,7 +142,57 @@ LOG_LEVEL=INFO
 
 ## FASE ACTUAL
 
-→ **v1.2.1** — Mejoras landing page (ver DEPLOY.md para guía de despliegue)
+→ **v1.3.0** — Derivación handoff (en rama, pendiente de merge y despliegue)
+
+### ⚠️ Checklist de despliegue — v1.3.0
+
+**Orden de merge obligatorio (dependencia de ramas):**
+1. Mergear `claude/implement-feature-tracking-YM4vd` → `main` (feature flags, base de v1.3.0)
+2. Mergear `claude/implement-v1.3.0-handoff-ODn62` → `main`
+
+**BD — ejecutar en producción:**
+```bash
+conda run -n botllm alembic upgrade head
+# Migración: a1b2c3d4e5f6 — añade wa_personal_phone, derivation_timeout_minutes, sender_name
+```
+
+**Configuración tenant (superadmin):**
+- Asignar `plan = PAID` al tenant para que las features handoff se activen
+  - O añadir `feature_overrides: {"handoff.web_chat": true, "handoff.wa_bridge": true, "handoff.cancellation_alert": true}`
+- Configurar `wa_personal_phone` en el tenant (número WhatsApp personal del fisio, con prefijo país, ej: `34612345678`)
+  - Opcional: también en `admin_users.wa_personal_phone` para override por usuario
+- Revisar `derivation_timeout_minutes` (default 60, ajustar según necesidad)
+
+**Validación en local antes de subir:**
+- [ ] `alembic upgrade head` sin errores
+- [ ] Login admin → aparece tab "Chat derivaciones"
+- [ ] Paciente envía mensaje → bot responde (flujo normal)
+- [ ] Bot detecta intención `derivar` → conversación pasa a DERIVADA, email al fisio, aparece en panel chat
+- [ ] Fisio escribe en chat web → mensaje llega al paciente por WhatsApp
+- [ ] Fisio escribe con prefijo `1.` desde WA personal → mensaje llega al paciente
+- [ ] Fisio escribe `/bot` desde WA personal → derivación cerrada, bot retoma
+- [ ] Cancelar cita a <24h → email de alerta al fisio
+- [ ] Timeout derivación → conversación vuelve a ACTIVA, email al fisio
+
+**Dependencias Python nuevas:**
+- No se añadieron dependencias nuevas (WebSocket es nativo en FastAPI/Starlette)
+
+### Changelog v1.3.0
+- Estado de conversación `DERIVADA`: bypass LLM, mensajes del paciente se notifican al fisio
+- `derivation_service`: orquesta derivación (estado + email + push WS + Redis mapping)
+- `websocket_manager`: ConnectionManager singleton por tenant para el chat en tiempo real
+- `admin_chat` router: WS `/admin/chat/ws` + REST `/send`, `/end`, `/active`, `/messages`
+- `wa_bridge_service`: fisio responde desde WA personal con prefijos `N.` o `1.`, comando `/bot`
+- Webhook detecta si el sender es el fisio → rutea a WA bridge (sin llamar al LLM)
+- Alerta cancelación `<24h` por email al fisio (feature `handoff.cancellation_alert`)
+- UI: tab "Chat derivaciones" en panel admin con lista activa, chat, badge, sonido
+- Campos nuevos: `wa_personal_phone` (Tenant + AdminUser), `derivation_timeout_minutes` (Tenant), `sender_name` (Message)
+
+### Changelog v1.2.0 — Feature Flags
+- Sistema de feature flags con planes (SIN_PLAN / FREE_TRIAL / PAID)
+- `features.py`: FEATURE_REGISTRY con 37 features, resolución con cache Redis 60s
+- `has_feature()`, `get_tenant_features()`, `require_feature()` dependency FastAPI
+- `FEATURES.md`: inventario completo de features para futuro sistema de pricing
 
 ### Changelog v1.2.1
 - Landing: nuevo headline hero "Recupera tiempo para lo que más te importa"
