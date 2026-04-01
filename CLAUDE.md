@@ -188,11 +188,13 @@ conda run -n botllm alembic upgrade head
 - UI: tab "Chat derivaciones" en panel admin con lista activa, chat, badge, sonido
 - Campos nuevos: `wa_personal_phone` (Tenant + AdminUser), `derivation_timeout_minutes` (Tenant), `sender_name` (Message)
 
-### Changelog v1.2.0 — Feature Flags
+### Changelog v1.2.2
 - Sistema de feature flags con planes (SIN_PLAN / FREE_TRIAL / PAID)
 - `features.py`: FEATURE_REGISTRY con 37 features, resolución con cache Redis 60s
 - `has_feature()`, `get_tenant_features()`, `require_feature()` dependency FastAPI
 - `FEATURES.md`: inventario completo de features para futuro sistema de pricing
+- Campos nuevos en Tenant: `plan`, `plan_expires_at`, `feature_overrides` (JSONB)
+- Migración Alembic: f7a1b2c3d4e5
 
 ### Changelog v1.2.1
 - Landing: nuevo headline hero "Recupera tiempo para lo que más te importa"
