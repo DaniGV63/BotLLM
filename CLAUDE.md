@@ -142,7 +142,15 @@ LOG_LEVEL=INFO
 
 ## FASE ACTUAL
 
-→ **v1.2.1** — Mejoras landing page (ver DEPLOY.md para guía de despliegue)
+→ **v1.2.2** — Feature flags y planes (en rama, pendiente de merge)
+
+### Changelog v1.2.2
+- Sistema de feature flags con planes (SIN_PLAN / FREE_TRIAL / PAID)
+- `features.py`: FEATURE_REGISTRY con 37 features, resolución con cache Redis 60s
+- `has_feature()`, `get_tenant_features()`, `require_feature()` dependency FastAPI
+- `FEATURES.md`: inventario completo de features para futuro sistema de pricing
+- Campos nuevos en Tenant: `plan`, `plan_expires_at`, `feature_overrides` (JSONB)
+- Migración Alembic: f7a1b2c3d4e5
 
 ### Changelog v1.2.1
 - Landing: nuevo headline hero "Recupera tiempo para lo que más te importa"

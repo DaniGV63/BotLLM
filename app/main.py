@@ -56,7 +56,7 @@ async def _safe_backup() -> None:
 async def lifespan(app: FastAPI):
     setup_logging()
     logger = structlog.get_logger()
-    logger.info("attendoo_started", version="1.1.0")
+    logger.info("attendoo_started", version="1.2.2")
     asyncio.create_task(_safe_backup())
     yield
     await close_redis()
@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Attendoo",
-    version="1.1.0",
+    version="1.2.2",
     lifespan=lifespan,
 )
 
