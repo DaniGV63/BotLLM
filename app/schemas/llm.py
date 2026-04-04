@@ -8,6 +8,8 @@ class ActionCreate(BaseModel):
     client_name: str
     client_phone: str
     service: str
+    is_group_class: bool = False
+    session_id: str | None = None
 
 
 class ActionModify(BaseModel):

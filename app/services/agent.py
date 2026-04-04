@@ -32,6 +32,7 @@ from app.services.conversation import (
     reactivate_conversation,
 )
 from app.services.email_service import send_cancellation_alert_email, send_notification_email
+from app.services.group_class_service import get_group_slots_for_bot, inscribe_patient
 from app.services.llm_service import detect_intent, generate_response, load_prompt
 from app.services.whatsapp_service import send_text
 
@@ -235,6 +236,10 @@ async def handle_message(
                 await send_text(tenant_id, wa_phone, MAX_CITAS_MSG, db)
                 return
             context["free_slots"] = await get_free_slots(tenant_id)
+            if features.get("groups.sessions", False):
+                group_slots = await get_group_slots_for_bot(tenant_id, 7, db)
+                if group_slots:
+                    context["group_slots"] = group_slots
         elif intent in ("cancelar_cita", "modificar_cita"):
             feature_key = "calendar.cancel" if intent == "cancelar_cita" else "calendar.modify"
             if not features.get(feature_key, False):
@@ -281,7 +286,7 @@ async def handle_message(
                     else:
                         execute = True
                         # 2.3 Race condition: re-validar slot justo antes de crear
-                        if action_type == "create":
+                        if action_type == "create" and not action.get("is_group_class"):
                             dt_iso = action.get("datetime", "")
                             slot_key = f"slot_lock:{tenant_id}:{dt_iso}"
                             if not await acquire_lock(slot_key, ttl=60):
@@ -298,8 +303,32 @@ async def handle_message(
                                     execute = False
                         if execute:
                             try:
-                                await _execute_action(action, tenant_id, wa_phone)
-                                action_executed = action_type
+                                if action_type == "create" and action.get("is_group_class"):
+                                    session_id_str = action.get("session_id", "")
+                                    result = await inscribe_patient(
+                                        tenant_id=tenant_id,
+                                        session_id=uuid.UUID(session_id_str),
+                                        wa_phone=wa_phone,
+                                        nombre=conversation.nombre_paciente,
+                                        db=db,
+                                    )
+                                    if not result.get("ok"):
+                                        reason = result.get("reason", "")
+                                        if reason == "full":
+                                            fresh_grp = await get_group_slots_for_bot(tenant_id, 7, db)
+                                            reply_text = (
+                                                "Lo siento, esa clase ya no tiene plazas. "
+                                                f"Otras opciones disponibles: {fresh_grp}"
+                                            )
+                                        else:
+                                            reply_text = "No se pudo completar la inscripción. Por favor, contacta con la clínica."
+                                        execute = False
+                                    else:
+                                        action_executed = action_type
+                                        log.info("group_inscription_done", session_id=session_id_str)
+                                else:
+                                    await _execute_action(action, tenant_id, wa_phone)
+                                    action_executed = action_type
                                 log.info("action_executed", action=action_type)
                                 # Alerta cancelacion <24h
                                 if action_type == "cancel" and features.get("handoff.cancellation_alert", False):

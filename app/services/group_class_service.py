@@ -313,19 +313,22 @@ async def get_group_slots_for_bot(
     days_ahead: int,
     db: AsyncSession,
 ) -> list[dict]:
-    """Slots grupales con plazas, agrupados por fecha. Formato compatible con get_free_slots."""
+    """Slots grupales con plazas, agrupados por fecha. Cada slot incluye session_id para el LLM."""
     sessions = await get_available_sessions(tenant_id, days_ahead, db)
-    by_date: dict[date, list[str]] = {}
+    by_date: dict[date, list[dict]] = {}
     for s in sessions:
-        slot_label = f"{s['hora']} - {s['nombre']} grupal ({s['plazas_libres']} plazas)"
-        by_date.setdefault(s["fecha"], []).append(slot_label)
+        slot = {
+            "label": f"{s['hora']} - {s['nombre']} grupal ({s['plazas_libres']} plazas)",
+            "session_id": str(s["session_id"]),
+            "hora": s["hora"],
+        }
+        by_date.setdefault(s["fecha"], []).append(slot)
 
     return [
         {
             "date": d.strftime("%Y-%m-%d"),
             "day_name": _DAY_NAMES_ES[d.weekday()],
             "slots": slots,
-            "is_group": True,
         }
         for d, slots in sorted(by_date.items())
     ]

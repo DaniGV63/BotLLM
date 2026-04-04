@@ -122,6 +122,12 @@ async def generate_response(
             f"{json.dumps(context['free_slots'], indent=2, ensure_ascii=False)}\n"
         )
 
+    if context.get("group_slots"):
+        system_content += (
+            f"\n## Clases grupales disponibles\n"
+            f"{json.dumps(context['group_slots'], indent=2, ensure_ascii=False)}\n"
+        )
+
     if context.get("appointment"):
         system_content += (
             f"\n## Cita existente del paciente\n"
