@@ -181,3 +181,51 @@ class TenantFeaturesResponse(BaseModel):
     plan: str
     plan_expires_at: datetime | None
     features: list[FeatureInfo]
+
+
+# --- Group Classes ---
+
+
+class GroupClassCreate(BaseModel):
+    nombre: str
+    dias_semana: list[int]
+    hora: str
+    duracion_min: int = 60
+    max_capacidad: int = 8
+
+
+class GroupClassUpdate(BaseModel):
+    nombre: str | None = None
+    dias_semana: list[int] | None = None
+    hora: str | None = None
+    duracion_min: int | None = None
+    max_capacidad: int | None = None
+    activa: bool | None = None
+
+
+class GroupClassRead(BaseModel):
+    id: UUID
+    nombre: str
+    dias_semana: list[int]
+    hora: str
+    duracion_min: int
+    max_capacidad: int
+    activa: bool
+    created_at: datetime
+
+
+class GroupSessionRead(BaseModel):
+    id: UUID
+    definition_id: UUID
+    fecha: str
+    hora: str
+    estado: str
+    inscritos: int
+    plazas_libres: int
+
+
+class GroupInscriptionRead(BaseModel):
+    id: UUID
+    wa_phone: str
+    nombre_paciente: str | None
+    created_at: datetime

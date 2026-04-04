@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.core.redis import close_redis
 from app.routers.admin import router as admin_router
 from app.routers.admin_chat import router as admin_chat_router
+from app.routers.admin_classes import router as admin_classes_router
 from app.routers.admin_features import router as admin_features_router
 from app.routers.oauth import router as oauth_router
 from app.routers.superadmin import router as superadmin_router
@@ -74,6 +75,7 @@ app = FastAPI(
 app.include_router(webhook_router)
 app.include_router(admin_router)
 app.include_router(admin_chat_router)
+app.include_router(admin_classes_router)
 app.include_router(admin_features_router)
 app.include_router(superadmin_router)
 app.include_router(oauth_router)

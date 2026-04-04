@@ -69,6 +69,9 @@
                 <i data-lucide="headphones" class="w-4 h-4 shrink-0"></i> Chat derivaciones
                 <span id="chat-badge" class="hidden ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold min-w-[20px] text-center"></span>
             </button>
+            <button onclick="showTab('clases')" id="tab-btn-clases" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
+                <i data-lucide="calendar-range" class="w-4 h-4 shrink-0"></i> Clases grupales
+            </button>
             <button onclick="showTab('dashboard')" id="tab-btn-dashboard" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
                 <i data-lucide="bar-chart-3" class="w-4 h-4 shrink-0"></i> Dashboard
             </button>
@@ -295,6 +298,108 @@
             </div>
         </div>
 
+        <!-- Tab: Clases grupales -->
+        <div id="tab-clases" class="hidden p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Clases grupales</h2>
+                <button onclick="showCreateClassForm()" class="bg-teal-600 hover:bg-teal-700 text-white text-sm px-3 py-1.5 rounded-lg transition-colors">+ Nueva clase</button>
+            </div>
+            <!-- Formulario nueva/editar clase -->
+            <div id="class-form" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+                <h3 id="class-form-title" class="text-sm font-semibold text-gray-700 mb-3">Nueva clase</h3>
+                <input type="hidden" id="class-form-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="text-xs text-gray-500 block mb-1">Nombre</label>
+                        <input id="class-form-nombre" type="text" class="w-full border rounded p-2 text-sm" placeholder="Pilates, Yoga...">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 block mb-1">Hora (HH:MM)</label>
+                        <input id="class-form-hora" type="text" class="w-full border rounded p-2 text-sm" placeholder="10:00">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 block mb-1">Duración (min)</label>
+                        <input id="class-form-duracion" type="number" class="w-full border rounded p-2 text-sm" value="60">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 block mb-1">Aforo máximo</label>
+                        <input id="class-form-aforo" type="number" class="w-full border rounded p-2 text-sm" value="8">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="text-xs text-gray-500 block mb-1">Días de la semana</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="0"> Lun</label>
+                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="1"> Mar</label>
+                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="2"> Mié</label>
+                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="3"> Jue</label>
+                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="4"> Vie</label>
+                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="5"> Sáb</label>
+                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="6"> Dom</label>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="saveClass()" class="bg-teal-600 hover:bg-teal-700 text-white text-sm px-3 py-1.5 rounded-lg">Guardar</button>
+                    <button onclick="document.getElementById('class-form').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-sm px-3 py-1.5 rounded-lg border">Cancelar</button>
+                </div>
+            </div>
+            <!-- Tabla de clases -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-4">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Nombre</th>
+                            <th class="px-4 py-3 text-left">Días</th>
+                            <th class="px-4 py-3 text-left">Hora</th>
+                            <th class="px-4 py-3 text-left">Aforo</th>
+                            <th class="px-4 py-3 text-left">Estado</th>
+                            <th class="px-4 py-3 text-left">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="classes-table-body" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+            <!-- Panel sesiones -->
+            <div id="sessions-panel" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 id="sessions-panel-title" class="text-sm font-semibold text-gray-700">Sesiones</h3>
+                    <div class="flex gap-2">
+                        <button onclick="generateSessions()" class="text-teal-600 hover:text-teal-800 text-sm border border-teal-300 px-2 py-1 rounded">Generar 14 días</button>
+                        <button onclick="document.getElementById('sessions-panel').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                    </div>
+                </div>
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Fecha</th>
+                            <th class="px-3 py-2 text-left">Hora</th>
+                            <th class="px-3 py-2 text-left">Estado</th>
+                            <th class="px-3 py-2 text-left">Inscritos</th>
+                            <th class="px-3 py-2 text-left">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sessions-table-body" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+            <!-- Panel inscripciones -->
+            <div id="inscriptions-panel" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-4 mt-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 id="inscriptions-panel-title" class="text-sm font-semibold text-gray-700">Inscritos</h3>
+                    <button onclick="document.getElementById('inscriptions-panel').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                </div>
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Teléfono</th>
+                            <th class="px-3 py-2 text-left">Nombre</th>
+                            <th class="px-3 py-2 text-left">Fecha inscripción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inscriptions-table-body" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Tab: Dashboard -->
         <div id="tab-dashboard" class="hidden">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -331,5 +436,6 @@
 </div>
 <script src="/static/admin.js"></script>
 <script src="/static/admin-chat.js"></script>
+<script src="/static/admin-classes.js"></script>
 </body>
 </html>
