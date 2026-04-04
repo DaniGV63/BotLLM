@@ -52,7 +52,7 @@
 | 16 | **Chat web + respuesta fisio (v1.3.0)** | ✅ Plan aprobado | WebSocket admin, estado DERIVADA, fisio responde desde panel. Plan: `docs/PLAN_V1.3.0.md` |
 | 17 | **WhatsApp bridge derivaciones (v1.3.0)** | ✅ Plan aprobado | Bridge WA personal fisio con prefijos `1.`, `2.`. Misma versión que #16. |
 | 26 | **Alerta cancelación <24h (v1.3.0)** | ✅ Plan aprobado | Email + WA al fisio si cita/clase se cancela a <24h. Incluido en plan. |
-| 18 | **Sesiones grupales (v1.5.0)** | ✅ Plan aprobado | Clases recurrentes + excepciones, aforo configurable, inscripciones BD + Calendar. |
+| 18 | **Sesiones grupales (v1.5.0)** | ✅ Implementada | Clases recurrentes + excepciones, aforo configurable, inscripciones BD + Calendar. |
 
 ### Bloque B — Bugs y comportamiento del bot
 

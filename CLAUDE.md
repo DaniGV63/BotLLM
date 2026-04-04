@@ -40,26 +40,34 @@ Attendoo/
 ├── app/
 │   ├── main.py
 │   ├── core/    (config, database, redis, security, features)
-│   ├── models/  (tenant, conversation, message)
+│   ├── models/  (tenant, conversation, message, group_class)
 │   ├── schemas/ (llm.py → LLMResponse, ActionCreate, etc.)
 │   └── services/
 │       ├── llm_client.py           ← wrapper: OpenAIClient + GeminiClient + singleton
 │       ├── llm_service.py          ← detect_intent() + generate_response()
-│       ├── agent.py                ← orquestador (≤200 líneas)
-│       ├── conversation.py         ← historial Redis + sync PG + ciclo vida (deactivate/reactivate)
+│       ├── agent.py                ← orquestador (excepción líneas)
+│       ├── conversation.py         ← historial Redis + sync PG + ciclo vida
 │       ├── calendar_service.py     ← get_free_slots, create/modify/cancel appointment
 │       ├── whatsapp_service.py     ← parse_incoming + send_text
 │       ├── email_service.py        ← Gmail send
+│       ├── derivation_service.py   ← derivación handoff: estado + email + WS + Redis
+│       ├── wa_bridge_service.py    ← fisio responde desde WA personal (prefijos N.)
+│       ├── websocket_manager.py    ← ConnectionManager singleton por tenant
+│       ├── group_class_service.py  ← CRUD clases, sesiones lazy, inscripciones
 │       └── backup_service.py       ← backup/restore multi-tenant (V2 JSON)
 │   └── routers/
 │       ├── webhook.py              ← GET/POST webhook Meta
 │       ├── admin.py                ← panel admin (login, config, métricas)
+│       ├── admin_chat.py           ← WS chat handoff + REST derivaciones
+│       ├── admin_classes.py        ← CRUD clases grupales, sesiones, inscritos
+│       ├── admin_features.py       ← endpoints features
 │       ├── superadmin.py           ← CRUD tenants, usuarios, onboarding status
-│       ├── admin_features.py       ← endpoints features (separado de admin.py)
 │       └── oauth.py                ← flujo OAuth2 Google Calendar/Gmail
 ├── static/
 │   ├── admin.html                  ← panel admin (template HTML)
 │   ├── admin.js                    ← lógica JS del panel admin
+│   ├── admin-chat.js               ← WebSocket client, chat UI derivaciones
+│   ├── admin-classes.js            ← UI gestión clases grupales
 │   └── attendoo.css                ← estilos compartidos
 ├── landing/
 │   └── index.html                  ← landing page comercial
@@ -142,7 +150,17 @@ LOG_LEVEL=INFO
 
 ## FASE ACTUAL
 
-→ **v1.4.0** — Polish post-handoff
+→ **v1.5.0** — Sesiones grupales
+
+### Changelog v1.5.0
+- Modelos BD: `GroupClassDefinition`, `GroupClassSession`, `GroupClassInscription` + migración
+- `group_class_service`: CRUD definiciones, generación lazy de sesiones, inscripciones con SELECT FOR UPDATE, alerta cancelación <24h
+- Slots grupales mezclados con slots individuales en intent `agendar_cita` (feature `groups.sessions`)
+- `ActionCreate` con campos opcionales `is_group_class` + `session_id` → `inscribe_patient()` en lugar de Calendar
+- Router `admin/classes`: CRUD definiciones, sesiones con conteo inscritos, generación lazy, lista inscritos (feature gate `groups.templates`)
+- UI: tab "Clases grupales" en panel admin con formulario, tabla, sesiones e inscritos
+- Features grupales marcadas IMPLEMENTED en features.py y FEATURES.md
+- Tests: 20 tests nuevos (unitarios + integración), total 68/68 pasados
 
 ### Changelog v1.4.0
 - Superadmin puede editar `wa_personal_phone` y `derivation_timeout_minutes` del tenant

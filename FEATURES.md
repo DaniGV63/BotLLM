@@ -135,9 +135,9 @@ Clases recurrentes con capacidad.
 
 | Key | Nombre | Status | Dif. | Prio. | Conv. | Estab. | Deps | Version |
 |-----|--------|--------|------|-------|-------|--------|------|---------|
-| `groups.templates` | Plantillas clases recurrentes | pendiente | L | media | alto | experimental | `calendar.schedule` | v1.5 |
-| `groups.sessions` | Sesiones con capacidad | pendiente | M | media | alto | experimental | `groups.templates` | v1.5 |
-| `groups.inscriptions` | Inscripciones pacientes | pendiente | M | media | medio | experimental | `groups.sessions` | v1.5 |
+| `groups.templates` | Plantillas clases recurrentes | implementada | L | media | alto | beta | `calendar.schedule` | v1.5 |
+| `groups.sessions` | Sesiones con capacidad | implementada | M | media | alto | beta | `groups.templates` | v1.5 |
+| `groups.inscriptions` | Inscripciones pacientes | implementada | M | media | medio | beta | `groups.sessions` | v1.5 |
 
 ---
 
