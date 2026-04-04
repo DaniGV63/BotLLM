@@ -8,7 +8,14 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from app.core.database import Base
-from app.models import Conversation, Message, Tenant  # noqa: F401
+from app.models import (  # noqa: F401
+    Conversation,
+    GroupClassDefinition,
+    GroupClassInscription,
+    GroupClassSession,
+    Message,
+    Tenant,
+)
 
 config = context.config
 
