@@ -34,6 +34,7 @@ from app.schemas.admin import (
 )
 from app.core.features import has_feature
 from app.services.email_service import send_bot_status_email
+from app.services.wa_bridge_service import invalidate_fisio_cache
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 logger = structlog.get_logger()
@@ -48,6 +49,8 @@ _SUPER_ONLY_FIELDS = {
     "plan",
     "plan_expires_at",
     "feature_overrides",
+    "wa_personal_phone",
+    "derivation_timeout_minutes",
 }
 
 
@@ -137,6 +140,8 @@ def _tenant_to_read(tenant: Tenant) -> TenantRead:
         plan=tenant.plan,
         plan_expires_at=tenant.plan_expires_at,
         feature_overrides=tenant.feature_overrides or {},
+        wa_personal_phone=tenant.wa_personal_phone,
+        derivation_timeout_minutes=tenant.derivation_timeout_minutes or 60,
     )
 
 
@@ -237,6 +242,12 @@ async def update_tenant(
         except Exception:
             logger.warning("bot_status_email_failed", tenant_id=str(tenant.id))
 
+    if "wa_personal_phone" in updates:
+        try:
+            await invalidate_fisio_cache(tenant.id)
+        except Exception:
+            logger.warning("fisio_cache_invalidation_failed", tenant_id=str(tenant.id))
+
     return _tenant_to_read(tenant)
 
 
@@ -244,11 +255,14 @@ async def update_tenant(
 async def list_conversations(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    estado: str | None = Query(None),
     tenant: Tenant = Depends(require_tenant_scope),
     db: AsyncSession = Depends(get_db),
 ) -> ConversationListResponse:
-    """Lista conversaciones recientes del tenant con paginación."""
+    """Lista conversaciones recientes del tenant con paginación y filtro por estado."""
     base_filter = select(Conversation).where(Conversation.tenant_id == tenant.id)
+    if estado:
+        base_filter = base_filter.where(Conversation.estado == estado)
 
     count_result = await db.execute(
         select(func.count()).select_from(base_filter.subquery())

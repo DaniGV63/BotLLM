@@ -142,40 +142,12 @@ LOG_LEVEL=INFO
 
 ## FASE ACTUAL
 
-→ **v1.3.0** — Derivación handoff (en rama, pendiente de merge y despliegue)
+→ **v1.4.0** — Polish post-handoff
 
-### ⚠️ Checklist de despliegue — v1.3.0
-
-**Orden de merge obligatorio (dependencia de ramas):**
-1. Mergear `claude/implement-feature-tracking-YM4vd` → `main` (feature flags, base de v1.3.0)
-2. Mergear `claude/implement-v1.3.0-handoff-ODn62` → `main`
-
-**BD — ejecutar en producción:**
-```bash
-conda run -n botllm alembic upgrade head
-# Migración: a1b2c3d4e5f6 — añade wa_personal_phone, derivation_timeout_minutes, sender_name
-```
-
-**Configuración tenant (superadmin):**
-- Asignar `plan = PAID` al tenant para que las features handoff se activen
-  - O añadir `feature_overrides: {"handoff.web_chat": true, "handoff.wa_bridge": true, "handoff.cancellation_alert": true}`
-- Configurar `wa_personal_phone` en el tenant (número WhatsApp personal del fisio, con prefijo país, ej: `34612345678`)
-  - Opcional: también en `admin_users.wa_personal_phone` para override por usuario
-- Revisar `derivation_timeout_minutes` (default 60, ajustar según necesidad)
-
-**Validación en local antes de subir:**
-- [ ] `alembic upgrade head` sin errores
-- [ ] Login admin → aparece tab "Chat derivaciones"
-- [ ] Paciente envía mensaje → bot responde (flujo normal)
-- [ ] Bot detecta intención `derivar` → conversación pasa a DERIVADA, email al fisio, aparece en panel chat
-- [ ] Fisio escribe en chat web → mensaje llega al paciente por WhatsApp
-- [ ] Fisio escribe con prefijo `1.` desde WA personal → mensaje llega al paciente
-- [ ] Fisio escribe `/bot` desde WA personal → derivación cerrada, bot retoma
-- [ ] Cancelar cita a <24h → email de alerta al fisio
-- [ ] Timeout derivación → conversación vuelve a ACTIVA, email al fisio
-
-**Dependencias Python nuevas:**
-- No se añadieron dependencias nuevas (WebSocket es nativo en FastAPI/Starlette)
+### Changelog v1.4.0
+- Superadmin puede editar `wa_personal_phone` y `derivation_timeout_minutes` del tenant
+- Cambiar `wa_personal_phone` invalida automáticamente la cache Redis del fisio
+- Filtro `?estado=` en `GET /admin/conversations` (ACTIVA, INACTIVA, DERIVADA)
 
 ### Changelog v1.3.0
 - Estado de conversación `DERIVADA`: bypass LLM, mensajes del paciente se notifican al fisio

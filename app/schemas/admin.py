@@ -39,6 +39,8 @@ class TenantRead(BaseModel):
     plan: str
     plan_expires_at: datetime | None
     feature_overrides: dict
+    wa_personal_phone: str | None
+    derivation_timeout_minutes: int
 
 
 class TenantUpdate(BaseModel):
@@ -56,6 +58,8 @@ class TenantUpdate(BaseModel):
     plan: str | None = None
     plan_expires_at: datetime | None = None
     feature_overrides: dict | None = None
+    wa_personal_phone: str | None = None
+    derivation_timeout_minutes: int | None = None
 
 
 class TenantCreate(BaseModel):
