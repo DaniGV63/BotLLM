@@ -142,6 +142,8 @@ def _tenant_to_read(tenant: Tenant) -> TenantRead:
         feature_overrides=tenant.feature_overrides or {},
         wa_personal_phone=tenant.wa_personal_phone,
         derivation_timeout_minutes=tenant.derivation_timeout_minutes or 60,
+        work_blocks=tenant.work_blocks or {},
+        slot_duration_minutes=tenant.slot_duration_minutes or 60,
     )
 
 

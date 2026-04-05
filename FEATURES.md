@@ -123,9 +123,9 @@ Derivacion en tiempo real al fisioterapeuta.
 
 | Key | Nombre | Status | Dif. | Prio. | Conv. | Estab. | Deps | Version |
 |-----|--------|--------|------|-------|-------|--------|------|---------|
-| `handoff.web_chat` | Chat web fisio (WebSocket) | pendiente | L | alta | alto | beta | `email.derivation` | v1.3 |
-| `handoff.wa_bridge` | Puente WhatsApp fisio | pendiente | L | alta | alto | beta | `email.derivation` | v1.3 |
-| `handoff.cancellation_alert` | Alerta cancelacion <24h | pendiente | M | alta | medio | beta | `calendar.cancel` | v1.3 |
+| `handoff.web_chat` | Chat web fisio (WebSocket) | implementada | L | alta | alto | beta | `email.derivation` | v1.3 |
+| `handoff.wa_bridge` | Puente WhatsApp fisio | implementada | L | alta | alto | beta | `email.derivation` | v1.3 |
+| `handoff.cancellation_alert` | Alerta cancelacion <24h | implementada | M | alta | medio | beta | `calendar.cancel` | v1.3 |
 
 ---
 

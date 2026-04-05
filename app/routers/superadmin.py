@@ -43,6 +43,7 @@ def _tenant_to_list_item(tenant: Tenant) -> TenantListItem:
         activo=tenant.activo,
         created_at=tenant.created_at,
         plan=tenant.plan,
+        plan_expires_at=tenant.plan_expires_at,
     )
 
 
@@ -239,6 +240,7 @@ async def get_tenant_features_endpoint(
         plan=tenant.plan,
         plan_expires_at=tenant.plan_expires_at,
         features=features,
+        feature_overrides=tenant.feature_overrides or {},
     )
 
 
@@ -262,7 +264,12 @@ async def update_tenant_plan(
 
     tenant.plan = new_plan
     if "plan_expires_at" in body:
-        tenant.plan_expires_at = body["plan_expires_at"]
+        from datetime import datetime, timezone
+        raw = body["plan_expires_at"]
+        if raw is None:
+            tenant.plan_expires_at = None
+        else:
+            tenant.plan_expires_at = datetime.fromisoformat(raw.replace("Z", "+00:00")) if isinstance(raw, str) else raw
     await db.commit()
     await invalidate_feature_cache(tenant_id)
     logger.info("tenant_plan_updated", tenant_id=str(tenant_id), plan=new_plan)

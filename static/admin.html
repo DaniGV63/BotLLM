@@ -19,6 +19,7 @@
         }
     </script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <link rel="stylesheet" href="/static/attendoo.css">
 </head>
 <body class="bg-gray-50 min-h-screen font-sans">
@@ -72,6 +73,9 @@
             <button onclick="showTab('clases')" id="tab-btn-clases" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
                 <i data-lucide="calendar-range" class="w-4 h-4 shrink-0"></i> Clases grupales
             </button>
+            <button onclick="showTab('calendario')" id="tab-btn-calendario" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
+                <i data-lucide="calendar-days" class="w-4 h-4 shrink-0"></i> Calendario
+            </button>
             <button onclick="showTab('dashboard')" id="tab-btn-dashboard" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
                 <i data-lucide="bar-chart-3" class="w-4 h-4 shrink-0"></i> Dashboard
             </button>
@@ -79,6 +83,7 @@
         <div class="px-4 py-4 border-t border-white/10 space-y-2">
             <span id="nav-role-badge" class="hidden text-xs font-medium px-2 py-0.5 rounded-full"></span>
             <p id="nav-nombre" class="text-gray-300 text-sm font-medium truncate px-3"></p>
+            <span id="nav-plan-badge" class="hidden text-xs font-medium px-2 py-0.5 rounded-full mx-3"></span>
             <button onclick="logout()" class="text-gray-400 hover:text-white text-sm transition-colors duration-150 px-3">Cerrar sesión</button>
         </div>
     </aside>
@@ -135,7 +140,7 @@
                 <table class="w-full text-sm">
                     <thead><tr class="border-b text-left text-gray-400 text-xs uppercase tracking-wider">
                         <th class="pb-2 pr-4">Slug</th><th class="pb-2 pr-4">Negocio</th>
-                        <th class="pb-2 pr-4">Bot</th><th class="pb-2 pr-4">Alta</th><th class="pb-2"></th>
+                        <th class="pb-2 pr-4">Bot</th><th class="pb-2 pr-4">Plan</th><th class="pb-2 pr-4">Alta</th><th class="pb-2 pr-4">Baja</th><th class="pb-2"></th>
                     </tr></thead>
                     <tbody id="tenants-table"></tbody>
                 </table>
@@ -201,6 +206,16 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Max citas activas por paciente</label>
                         <input id="f-max-citas" type="number" min="1" max="20" class="w-full p-2 border rounded focus:ring-2 focus:ring-teal-500">
+                    </div>
+                </div>
+                <hr class="my-4 border-gray-200">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">Horario de atenci&oacute;n</h3>
+                <p class="text-xs text-gray-400 mb-3">Define los bloques horarios de cada d&iacute;a. El bot solo ofrecer&aacute; citas dentro de estos horarios.</p>
+                <div id="work-blocks-editor" class="space-y-2 mb-4"></div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Duraci&oacute;n cita por defecto (min)</label>
+                        <input id="f-slot-duration" type="number" min="15" max="180" step="5" class="w-full p-2 border rounded focus:ring-2 focus:ring-teal-500">
                     </div>
                 </div>
                 <button onclick="saveDatos()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium">Guardar</button>
@@ -400,8 +415,47 @@
             </div>
         </div>
 
+        <!-- Tab: Calendario -->
+        <div id="tab-calendario" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">Calendario</h2>
+                    <div class="flex items-center gap-2">
+                        <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded bg-blue-500 inline-block"></span> Citas</span>
+                        <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded bg-green-500 inline-block"></span> Grupales</span>
+                        <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded bg-gray-400 inline-block"></span> Bloqueado</span>
+                    </div>
+                </div>
+                <div id="fullcalendar-container"></div>
+            </div>
+        </div>
+
+        <!-- Modal bloquear horario -->
+        <div id="block-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+                <h3 class="font-semibold text-gray-900 mb-3">Bloquear horario</h3>
+                <p id="block-modal-time" class="text-sm text-gray-500 mb-3"></p>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Motivo (opcional)</label>
+                    <input id="block-modal-title" type="text" class="w-full p-2 border rounded text-sm" placeholder="Ej: Emergencia, Vacaciones...">
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button onclick="closeBlockModal()" class="px-4 py-2 text-sm rounded-lg border text-gray-600 hover:bg-gray-50">Cancelar</button>
+                    <button onclick="confirmBlockSlot()" class="px-4 py-2 text-sm rounded-lg bg-gray-700 text-white hover:bg-gray-800">Bloquear</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Tab: Dashboard -->
-        <div id="tab-dashboard" class="hidden">
+        <div id="tab-dashboard" class="hidden relative">
+            <!-- Overlay plan upgrade -->
+            <div id="dashboard-upgrade-overlay" class="hidden absolute inset-0 z-10 bg-white/90 backdrop-blur-sm flex items-center justify-center rounded-xl">
+                <div class="text-center p-8">
+                    <i data-lucide="lock" class="w-12 h-12 text-gray-400 mx-auto mb-3"></i>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Anal&iacute;ticas no disponibles</h3>
+                    <p class="text-gray-500 text-sm max-w-md">Las anal&iacute;ticas est&aacute;n disponibles en el plan <span class="font-semibold text-green-600">PAID</span>. Contacta con nosotros para actualizar tu plan.</p>
+                </div>
+            </div>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 <div class="bg-white rounded-xl shadow-sm border-l-4 border-teal-500 p-4">
                     <div class="flex items-center gap-3"><i data-lucide="message-square" class="w-5 h-5 text-teal-500 shrink-0"></i><div><div class="text-2xl font-bold text-gray-900" id="v-msgs-hoy">&mdash;</div><div class="text-xs text-gray-500 mt-0.5">Mensajes hoy</div></div></div>
@@ -424,7 +478,7 @@
 </div>
 
 <!-- Modal confirmacion -->
-<div id="confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+<div id="confirm-modal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/50">
     <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4">
         <h3 id="confirm-title" class="text-lg font-semibold text-gray-900 mb-2"></h3>
         <p id="confirm-text" class="text-sm text-gray-600 mb-6"></p>
@@ -434,8 +488,74 @@
         </div>
     </div>
 </div>
-<script src="/static/admin.js"></script>
-<script src="/static/admin-chat.js"></script>
-<script src="/static/admin-classes.js"></script>
+<!-- Modal cambiar plan tenant -->
+<div id="plan-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h3 class="font-semibold text-gray-900">Cambiar plan</h3>
+                <p id="plan-modal-tenant-name" class="text-sm text-gray-500"></p>
+            </div>
+            <button onclick="closePlanModal()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Plan</label>
+            <select id="plan-modal-select" class="w-full p-2 border rounded text-sm">
+                <option value="SIN_PLAN">SIN_PLAN</option>
+                <option value="FREE_TRIAL">FREE_TRIAL</option>
+                <option value="PAID">PAID</option>
+            </select>
+        </div>
+        <div class="mb-5">
+            <div class="flex items-center justify-between mb-2">
+                <label class="text-sm font-medium text-gray-600">Fecha de expiración</label>
+                <button type="button" id="plan-expires-toggle"
+                    onclick="togglePlanExpires()"
+                    class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-gray-200 transition-colors duration-200 focus:outline-none"
+                    role="switch" aria-checked="false">
+                    <span class="pointer-events-none inline-block h-4 w-4 translate-x-0 rounded-full bg-white shadow ring-0 transition duration-200"></span>
+                </button>
+            </div>
+            <input id="plan-modal-expires" type="datetime-local"
+                class="hidden w-full p-2 border rounded text-sm">
+        </div>
+        <div class="flex justify-end gap-2">
+            <button onclick="closePlanModal()" class="px-4 py-2 text-sm rounded-lg border text-gray-600 hover:bg-gray-50">Cancelar</button>
+            <button onclick="saveTenantPlan()" class="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700">Guardar</button>
+        </div>
+    </div>
+</div>
+<!-- Modal feature overrides -->
+<div id="features-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col mx-4">
+        <div class="p-4 border-b flex justify-between items-center shrink-0">
+            <div>
+                <h3 class="font-semibold text-gray-900">Feature overrides</h3>
+                <p id="features-tenant-name" class="text-sm text-gray-500"></p>
+            </div>
+            <button onclick="closeFeaturesModal()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+        <div class="p-4 overflow-y-auto flex-1">
+            <table class="w-full text-sm">
+                <thead><tr class="border-b text-left text-gray-400 text-xs uppercase">
+                    <th class="pb-2 pr-3">Feature</th>
+                    <th class="pb-2 pr-3">Habilitada</th>
+                    <th class="pb-2">Override</th>
+                </tr></thead>
+                <tbody id="features-table-body"></tbody>
+            </table>
+        </div>
+        <div class="p-4 border-t flex justify-end gap-2 shrink-0">
+            <button onclick="closeFeaturesModal()" class="px-4 py-2 text-sm rounded-lg border text-gray-600 hover:bg-gray-50">Cancelar</button>
+            <button onclick="resetFeatureOverrides()" class="px-4 py-2 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50">Reset a plan</button>
+            <button onclick="saveFeatureOverrides()" class="px-4 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700">Guardar</button>
+        </div>
+    </div>
+</div>
+<script src="/static/admin.js?v=164"></script>
+<script src="/static/admin-superadmin.js?v=164"></script>
+<script src="/static/admin-calendar.js?v=164"></script>
+<script src="/static/admin-chat.js?v=164"></script>
+<script src="/static/admin-classes.js?v=164"></script>
 </body>
 </html>

@@ -90,6 +90,7 @@ function stopImpersonating() {
     sessionStorage.removeItem('super_admin_token');
     document.getElementById('impersonation-banner').classList.add('hidden');
     document.getElementById('nav-nombre').textContent = '';
+    document.getElementById('nav-plan-badge').classList.add('hidden');
     renderTabsForRole(); showTab('tenants'); loadTenants();
 }
 
@@ -125,9 +126,9 @@ function renderTabsForRole() {
     const show = (id, v) => { const el = document.getElementById('tab-btn-' + id); if (el) el.classList.toggle('hidden', !v); };
     show('tenants', isSuperOnly); show('usuarios', isSuperOnly);
     show('configuracion', hasTenant); show('google', isSuperWithTenant);
-    show('conversaciones', hasTenant); show('dashboard', hasTenant); show('chat', hasTenant); show('clases', hasTenant);
+    show('conversaciones', hasTenant); show('calendario', hasTenant); show('dashboard', hasTenant); show('chat', hasTenant); show('clases', hasTenant);
 }
-const ALL_TABS = ['tenants','usuarios','configuracion','google','conversaciones','chat','clases','dashboard'];
+const ALL_TABS = ['tenants','usuarios','configuracion','google','conversaciones','calendario','chat','clases','dashboard'];
 function showTab(name) {
     ALL_TABS.forEach(t => {
         document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
@@ -141,6 +142,7 @@ function showTab(name) {
     clearInterval(dashboardRefreshInterval); dashboardRefreshInterval = null;
     if (name === 'conversaciones') { loadConversations(1); convRefreshInterval = setInterval(() => loadConversations(1), 10000); }
     if (name === 'dashboard') { loadMetrics(); dashboardRefreshInterval = setInterval(() => loadMetrics(), 10000); if (typeof lucide !== 'undefined') lucide.createIcons(); }
+    if (name === 'calendario') { if (typeof initCalendar === 'function') initCalendar(); }
     if (name === 'chat') { if (typeof initChat === 'function') initChat(); }
     if (name === 'clases') { if (typeof loadClasses === 'function') loadClasses(); }
     if (name === 'tenants') loadTenants();
@@ -152,6 +154,10 @@ function showTab(name) {
 async function loadTenant() {
     const t = await apiCall('GET', '/admin/tenant');
     document.getElementById('nav-nombre').textContent = t.nombre_negocio;
+    const planBadge = document.getElementById('nav-plan-badge');
+    const planMap = { 'PAID': { text: 'PAID', cls: 'bg-green-900/50 text-green-300' }, 'FREE_TRIAL': { text: 'Free Trial', cls: 'bg-yellow-900/50 text-yellow-300' }, 'SIN_PLAN': { text: 'Sin plan', cls: 'bg-gray-700 text-gray-400' } };
+    const pi = planMap[t.plan] || planMap['SIN_PLAN'];
+    planBadge.textContent = pi.text; planBadge.className = 'text-xs font-medium px-2 py-0.5 rounded-full mx-3 ' + pi.cls; planBadge.classList.remove('hidden');
     const badge = document.getElementById('nav-role-badge');
     if (userRole === 'super_admin') { badge.textContent = 'Super Admin'; badge.className = 'text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700'; badge.classList.remove('hidden'); }
     else { badge.classList.add('hidden'); }
@@ -160,6 +166,8 @@ async function loadTenant() {
     botActivo = t.bot_activo; updateBotToggle();
     document.getElementById('f-rate-limit').value = t.rate_limit_per_minute;
     document.getElementById('f-max-citas').value = t.max_citas_activas;
+    document.getElementById('f-slot-duration').value = t.slot_duration_minutes || 60;
+    renderWorkBlocksEditor(t.work_blocks || {});
     document.getElementById('f-calendar-id').value = t.google_calendar_id || '';
     document.getElementById('f-token-expiry').value = t.google_token_expiry
         ? new Date(t.google_token_expiry).toLocaleString('es-ES') : 'Sin configurar';
@@ -184,6 +192,8 @@ async function saveDatos() {
             bot_activo: botActivo,
             rate_limit_per_minute: parseInt(document.getElementById('f-rate-limit').value) || 10,
             max_citas_activas: parseInt(document.getElementById('f-max-citas').value) || 5,
+            slot_duration_minutes: parseInt(document.getElementById('f-slot-duration').value) || 60,
+            work_blocks: collectWorkBlocks(),
         });
         await loadTenant(); showMsg('ok', 'Datos guardados correctamente');
     } catch (e) { showMsg('err', e.message); }
@@ -202,112 +212,7 @@ async function saveGoogle() {
     } catch (e) { showMsg('err', e.message); }
 }
 
-// ===== SUPER ADMIN: TENANTS =====
-async function loadTenants() {
-    try {
-        const data = await apiCall('GET', '/superadmin/tenants');
-        tenantsCache = data.tenants;
-        const tbody = document.getElementById('tenants-table');
-        if (!data.tenants.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">Sin tenants</td></tr>';
-            return;
-        }
-        const demo = data.tenants[0];
-        if (demo) { document.getElementById('demo-tenant-name').textContent = demo.nombre_negocio; document.getElementById('demo-tenant-btn').onclick = () => impersonateTenant(demo.id, demo.nombre_negocio); document.getElementById('demo-tenant-card').classList.remove('hidden'); }
-        tbody.innerHTML = data.tenants.map(function(t) {
-            const botB = t.bot_activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500';
-            const botTxt = t.bot_activo ? 'Activo' : 'Inactivo';
-            const escId = escapeHtml(t.id);
-            const escName = escapeHtml(t.nombre_negocio);
-            const escSlug = escapeHtml(t.slug);
-            return '<tr class="border-b hover:bg-gray-50 transition-colors duration-100">'
-                + '<td class="py-2 pr-4 font-mono text-xs">' + escSlug + '</td>'
-                + '<td class="py-2 pr-4">' + escName + '</td>'
-                + '<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs ' + botB + '">' + botTxt + '</span></td>'
-                + '<td class="py-2 pr-4 text-gray-500 text-xs">' + new Date(t.created_at).toLocaleDateString('es-ES') + '</td>'
-                + '<td class="py-2"><button onclick="impersonateTenant(\'' + escId + '\',\'' + escName + '\')" class="text-teal-600 hover:text-teal-800 text-xs font-medium">Gestionar</button></td>'
-                + '</tr>';
-        }).join('');
-    } catch(e) { showMsg('err', e.message); }
-}
-function showCreateTenantForm() { document.getElementById('create-tenant-form').classList.remove('hidden'); }
-function hideCreateTenantForm() { document.getElementById('create-tenant-form').classList.add('hidden'); }
-async function createTenant() {
-    const slug = document.getElementById('nt-slug').value.trim();
-    const nombre = document.getElementById('nt-nombre').value.trim();
-    const email = document.getElementById('nt-email').value.trim();
-    const phoneId = document.getElementById('nt-phone-id').value.trim();
-    if (!slug || !nombre || !email || !phoneId) { showMsg('err', 'Todos los campos son obligatorios'); return; }
-    try {
-        await apiCall('POST', '/superadmin/tenants', {
-            slug: slug, nombre_negocio: nombre, email_notificaciones: email, whatsapp_phone_number_id: phoneId
-        });
-        hideCreateTenantForm();
-        ['nt-slug','nt-nombre','nt-email','nt-phone-id'].forEach(function(id) { document.getElementById(id).value = ''; });
-        await loadTenants(); showMsg('ok', "Tenant '" + slug + "' creado");
-    } catch(e) { showMsg('err', e.message); }
-}
-
-// ===== SUPER ADMIN: USUARIOS =====
-async function loadUsers() {
-    try {
-        const users = await apiCall('GET', '/superadmin/users');
-        const sel = document.getElementById('nu-tenant');
-        sel.innerHTML = '<option value="">Selecciona tenant...</option>'
-            + tenantsCache.map(function(t) { return '<option value="' + t.id + '">' + t.nombre_negocio + ' (' + t.slug + ')</option>'; }).join('');
-        const tbody = document.getElementById('users-table');
-        if (!users.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-400">Sin usuarios</td></tr>';
-            return;
-        }
-        const tenantMap = {};
-        tenantsCache.forEach(function(t) { tenantMap[t.id] = t.slug; });
-        tbody.innerHTML = users.map(function(u) {
-            const rolB = u.role === 'super_admin' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700';
-            const rolTxt = u.role === 'super_admin' ? 'Super Admin' : 'Tenant Admin';
-            const slug = u.tenant_id ? (tenantMap[u.tenant_id] || u.tenant_id.slice(0,8)) : '\u2014';
-            const escId = escapeHtml(u.id);
-            const escUsername = escapeHtml(u.username);
-            const escEmail = escapeHtml(u.email || '');
-            const del = u.role !== 'super_admin'
-                ? '<button onclick="deleteUser(\'' + escId + '\',\'' + escUsername + '\')" class="text-red-500 hover:text-red-700 text-xs">Eliminar</button>'
-                : '<span class="text-gray-300 text-xs">\u2014</span>';
-            return '<tr class="border-b hover:bg-gray-50 transition-colors duration-100">'
-                + '<td class="py-2 pr-4 font-medium">' + escUsername + '</td>'
-                + '<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs ' + rolB + '">' + rolTxt + '</span></td>'
-                + '<td class="py-2 pr-4 font-mono text-xs">' + slug + '</td>'
-                + '<td class="py-2 pr-4 text-gray-500 text-xs">' + (escEmail || '\u2014') + '</td>'
-                + '<td class="py-2 pr-4 text-gray-500 text-xs">' + new Date(u.created_at).toLocaleDateString('es-ES') + '</td>'
-                + '<td class="py-2">' + del + '</td></tr>';
-        }).join('');
-    } catch(e) { showMsg('err', e.message); }
-}
-function showCreateUserForm() {
-    if (!tenantsCache.length) { showMsg('err', 'Carga la lista de tenants primero (tab Tenants)'); return; }
-    document.getElementById('create-user-form').classList.remove('hidden');
-}
-function hideCreateUserForm() { document.getElementById('create-user-form').classList.add('hidden'); }
-async function createUser() {
-    const username = document.getElementById('nu-username').value.trim();
-    const password = document.getElementById('nu-password').value;
-    const email = document.getElementById('nu-email').value.trim();
-    const tid = document.getElementById('nu-tenant').value;
-    if (!username || !password || !tid) { showMsg('err', 'Username, contrasena y tenant son obligatorios'); return; }
-    try {
-        await apiCall('POST', '/superadmin/users', { username: username, password: password, tenant_id: tid, email: email || null });
-        hideCreateUserForm();
-        ['nu-username','nu-password','nu-email'].forEach(function(id) { document.getElementById(id).value = ''; });
-        document.getElementById('nu-tenant').value = '';
-        await loadUsers(); showMsg('ok', "Usuario '" + username + "' creado");
-    } catch(e) { showMsg('err', e.message); }
-}
-async function deleteUser(userId, username) {
-    if (!await showConfirmModal('Eliminar usuario', "Eliminar '" + username + "'? Esta acción no se puede deshacer.", true)) return;
-    try {
-        await apiCall('DELETE', '/superadmin/users/' + userId);
-        await loadUsers(); showMsg('ok', "Usuario '" + username + "' eliminado");
-    } catch(e) { showMsg('err', e.message); }
-}
+// (loadTenants, createTenant, loadUsers, createUser, deleteUser → admin-superadmin.js)
 
 // ===== CONVERSACIONES =====
 async function loadConversations(page) {
@@ -366,6 +271,7 @@ function closeMessages() { document.getElementById('messages-panel').classList.a
 async function loadMetrics() {
     try {
         const d = await apiCall('GET', '/admin/metrics');
+        document.getElementById('dashboard-upgrade-overlay').classList.add('hidden');
         document.getElementById('v-msgs-hoy').textContent = d.mensajes_hoy;
         document.getElementById('v-citas-mes').textContent = d.citas_agendadas_mes;
         document.getElementById('v-avg-ms').textContent = d.avg_processing_ms || '\u2014';
@@ -373,7 +279,12 @@ async function loadMetrics() {
         document.getElementById('metrics-detail').innerHTML =
             '<p>Mensajes esta semana: <strong>' + d.mensajes_semana + '</strong></p>'
             + '<p>Cancelaciones este mes: <strong>' + d.citas_canceladas_mes + '</strong> &nbsp;|&nbsp; Derivaciones: <strong>' + d.derivaciones_mes + '</strong></p>';
-    } catch (e) { showMsg('err', e.message); }
+    } catch (e) {
+        if (e.message && e.message.includes('no disponible')) {
+            document.getElementById('dashboard-upgrade-overlay').classList.remove('hidden');
+            clearInterval(dashboardRefreshInterval); dashboardRefreshInterval = null;
+        } else { showMsg('err', e.message); }
+    }
 }
 
 // ===== MODAL CONFIRMACION =====
@@ -385,6 +296,65 @@ function showConfirmModal(title, text, danger) {
     return new Promise(r => { confirmResolve = r; });
 }
 function closeConfirmModal(result) { document.getElementById('confirm-modal').classList.add('hidden'); if (confirmResolve) { confirmResolve(result); confirmResolve = null; } }
+
+// ===== WORK BLOCKS EDITOR =====
+const WB_DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+let currentWorkBlocks = {};
+
+function renderWorkBlocksEditor(workBlocks) {
+    currentWorkBlocks = workBlocks || {};
+    const container = document.getElementById('work-blocks-editor');
+    container.innerHTML = '';
+    for (let d = 0; d < 7; d++) {
+        const blocks = (currentWorkBlocks[String(d)] || []);
+        const row = document.createElement('div');
+        row.className = 'flex items-start gap-3';
+        let blocksHtml = '';
+        if (blocks.length === 0) {
+            blocksHtml = '<span class="text-xs text-gray-400 pt-1">Cerrado</span>';
+        } else {
+            blocksHtml = blocks.map(function(b, i) {
+                return '<div class="flex items-center gap-1">'
+                    + '<input type="time" value="' + b[0] + '" class="wb-start border rounded p-1 text-xs" data-day="' + d + '" data-idx="' + i + '">'
+                    + '<span class="text-gray-400">-</span>'
+                    + '<input type="time" value="' + b[1] + '" class="wb-end border rounded p-1 text-xs" data-day="' + d + '" data-idx="' + i + '">'
+                    + '<button onclick="removeWbBlock(' + d + ',' + i + ')" class="text-red-400 hover:text-red-600 text-xs ml-1">&times;</button>'
+                    + '</div>';
+            }).join('');
+        }
+        row.innerHTML = '<span class="w-24 text-sm text-gray-600 pt-1 shrink-0">' + WB_DAYS[d] + '</span>'
+            + '<div class="flex flex-wrap gap-2">' + blocksHtml + '</div>'
+            + '<button onclick="addWbBlock(' + d + ')" class="text-teal-600 hover:text-teal-800 text-xs shrink-0 pt-1">+ Bloque</button>';
+        container.appendChild(row);
+    }
+}
+function addWbBlock(day) {
+    if (!currentWorkBlocks[String(day)]) currentWorkBlocks[String(day)] = [];
+    currentWorkBlocks[String(day)].push(['09:00', '14:00']);
+    renderWorkBlocksEditor(currentWorkBlocks);
+}
+function removeWbBlock(day, idx) {
+    var blocks = currentWorkBlocks[String(day)] || [];
+    blocks.splice(idx, 1);
+    if (blocks.length === 0) delete currentWorkBlocks[String(day)];
+    else currentWorkBlocks[String(day)] = blocks;
+    renderWorkBlocksEditor(currentWorkBlocks);
+}
+function collectWorkBlocks() {
+    var result = {};
+    for (var d = 0; d < 7; d++) {
+        var starts = document.querySelectorAll('.wb-start[data-day="' + d + '"]');
+        var ends = document.querySelectorAll('.wb-end[data-day="' + d + '"]');
+        var blocks = [];
+        starts.forEach(function(s, i) {
+            if (s.value && ends[i] && ends[i].value) blocks.push([s.value, ends[i].value]);
+        });
+        if (blocks.length > 0) result[String(d)] = blocks;
+    }
+    return result;
+}
+
+// (openFeaturesModal, saveFeatureOverrides, closeFeaturesModal → admin-superadmin.js)
 
 // ===== INIT =====
 if (typeof lucide !== 'undefined') lucide.createIcons();

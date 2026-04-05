@@ -94,6 +94,7 @@ Attendoo/
 8. **Solo texto plano** en WhatsApp — nada de List Messages, Reply Buttons, Flows
 9. **SDK directo** — openai + google-genai, sin LangChain
 10. **Registro de features** — Toda feature nueva debe registrarse en `app/core/features.py` (FEATURE_REGISTRY) y en `FEATURES.md`. Feature key = dotted notation (`modulo.subfeature`). Asignacion de plan obligatoria.
+11. **Actualizar estado tras implementar** — Después de completar un plan que modifique el bot, ejecutar `/update-status` para sincronizar FEATURES.md, BACKLOG.md, CLAUDE.md y PLAN.md.
 
 ## FLUJO DE CADA MENSAJE
 

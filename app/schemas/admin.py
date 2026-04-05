@@ -41,6 +41,8 @@ class TenantRead(BaseModel):
     feature_overrides: dict
     wa_personal_phone: str | None
     derivation_timeout_minutes: int
+    work_blocks: dict
+    slot_duration_minutes: int
 
 
 class TenantUpdate(BaseModel):
@@ -49,6 +51,8 @@ class TenantUpdate(BaseModel):
     bot_activo: bool | None = None
     rate_limit_per_minute: int | None = None
     max_citas_activas: int | None = None
+    work_blocks: dict | None = None
+    slot_duration_minutes: int | None = None
     # Solo super admin puede editar estos campos
     whatsapp_token: str | None = None
     google_calendar_id: str | None = None
@@ -81,6 +85,7 @@ class TenantListItem(BaseModel):
     activo: bool
     created_at: datetime
     plan: str
+    plan_expires_at: datetime | None = None
 
 
 class TenantListResponse(BaseModel):
@@ -181,6 +186,7 @@ class TenantFeaturesResponse(BaseModel):
     plan: str
     plan_expires_at: datetime | None
     features: list[FeatureInfo]
+    feature_overrides: dict
 
 
 # --- Group Classes ---

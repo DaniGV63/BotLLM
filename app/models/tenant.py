@@ -55,6 +55,16 @@ class Tenant(Base):
         JSONB, nullable=False, server_default="{}"
     )
 
+    # Horario de atención v1.6.0
+    work_blocks: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default='{"0":[["09:00","14:00"],["16:00","20:30"]],"1":[["09:00","14:00"],["16:00","20:30"]],"2":[["09:00","14:00"],["16:00","20:30"]],"3":[["09:00","14:00"],["16:00","20:30"]],"4":[["09:00","15:00"]]}',
+    )
+    slot_duration_minutes: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="60"
+    )
+
     # Handoff v1.3.0
     wa_personal_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     derivation_timeout_minutes: Mapped[int] = mapped_column(

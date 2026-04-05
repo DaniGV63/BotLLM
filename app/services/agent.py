@@ -20,6 +20,7 @@ from app.services.appointment_utils import (
 from app.services.calendar_service import (
     cancel_appointment,
     create_appointment,
+    format_work_blocks_for_prompt,
     get_appointment_by_phone,
     get_free_slots,
     modify_appointment,
@@ -221,8 +222,14 @@ async def handle_message(
         # Feature check
         features = await get_tenant_features(tenant_id, db)
 
+        # Horarios dinámicos del tenant para el LLM
+        business_hours = ""
+        if _t and getattr(_t, "work_blocks", None):
+            business_hours = format_work_blocks_for_prompt(_t.work_blocks)
+
         context: dict = {
             "business_info": load_prompt("negocio.md"),
+            "business_hours": business_hours,
             "current_datetime": _format_datetime_es(_now_madrid()),
             "nombre_paciente": conversation.nombre_paciente,
             "es_primera_interaccion": len(history) == 0,

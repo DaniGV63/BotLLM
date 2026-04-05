@@ -1,12 +1,12 @@
 # Backlog — Attendoo
 
-Última actualización: 2026-03-29. Fuente de verdad para priorización de tareas.
+Última actualización: 2026-04-04. Fuente de verdad para priorización de tareas.
 
 ## Resumen
 
 **Deploy Hetzner fijado: 2026-04-04 al 2026-04-06** (paralelo, no bloquea desarrollo).
 **Plan v1.3.0 + v1.5.0 aprobado.** Detalle completo en `docs/PLAN_V1.3.0.md`.
-**Orden de ejecución:** #25 → #16/#17/#26 → #18 → resto bloques B-E
+**Implementadas v1.2.2–v1.5.0:** #25, #16, #17, #26, #18. **Próximo:** Bloque B (bugs) o deploy Hetzner.
 
 ---
 
@@ -37,7 +37,7 @@
 
 ---
 
-## Backlog completo (26 tareas)
+## Backlog completo (27 tareas)
 
 ### Bloque A — Prioridad 1: Infraestructura
 
@@ -49,9 +49,9 @@
 
 | # | Tarea | Estado | Notas |
 |---|---|---|---|
-| 16 | **Chat web + respuesta fisio (v1.3.0)** | ✅ Plan aprobado | WebSocket admin, estado DERIVADA, fisio responde desde panel. Plan: `docs/PLAN_V1.3.0.md` |
-| 17 | **WhatsApp bridge derivaciones (v1.3.0)** | ✅ Plan aprobado | Bridge WA personal fisio con prefijos `1.`, `2.`. Misma versión que #16. |
-| 26 | **Alerta cancelación <24h (v1.3.0)** | ✅ Plan aprobado | Email + WA al fisio si cita/clase se cancela a <24h. Incluido en plan. |
+| 16 | **Chat web + respuesta fisio (v1.3.0)** | ✅ Implementada | WebSocket admin, estado DERIVADA, fisio responde desde panel. |
+| 17 | **WhatsApp bridge derivaciones (v1.3.0)** | ✅ Implementada | Bridge WA personal fisio con prefijos `1.`, `2.`. |
+| 26 | **Alerta cancelación <24h (v1.3.0)** | ✅ Implementada | Email al fisio si cita/clase se cancela a <24h. |
 | 18 | **Sesiones grupales (v1.5.0)** | ✅ Implementada | Clases recurrentes + excepciones, aforo configurable, inscripciones BD + Calendar. |
 
 ### Bloque B — Bugs y comportamiento del bot
@@ -63,6 +63,7 @@
 | 4 | **Bot afirmativo sobre servicios** | ⏳ Pendiente | Mejorar negocio.md con detalle de servicios + ajustar prompt para sugerir en vez de rechazar. |
 | 5 | **Refresco admin 5s** | ⏳ Pendiente | Existe polling 10s. Cambiar a 5s y verificar. |
 | 24 | **Seguridad sesión admin: logout + caché** | ⏳ Pendiente | Blacklist JWT Redis + `Cache-Control: no-store` + verificar token en cada carga. |
+| 27 | **Skill /update-status no sincroniza bien** | ⏳ Pendiente | No actualiza los .md del proyecto correctamente. Revisar manualmente. |
 
 ### Bloque C — Corto plazo (bajo acoplamiento)
 

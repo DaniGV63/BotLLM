@@ -78,15 +78,18 @@ async def create_class(
 ) -> GroupClassRead:
     if not await has_feature(tenant.id, _FEATURE, db):
         raise HTTPException(status_code=403, detail="Feature no disponible en tu plan")
-    definition = await create_definition(
-        tenant_id=tenant.id,
-        nombre=body.nombre,
-        dias_semana=body.dias_semana,
-        hora=body.hora,
-        duracion_min=body.duracion_min,
-        max_capacidad=body.max_capacidad,
-        db=db,
-    )
+    try:
+        definition = await create_definition(
+            tenant_id=tenant.id,
+            nombre=body.nombre,
+            dias_semana=body.dias_semana,
+            hora=body.hora,
+            duracion_min=body.duracion_min,
+            max_capacidad=body.max_capacidad,
+            db=db,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     await db.commit()
     await db.refresh(definition)
     return _def_to_read(definition)
@@ -103,7 +106,10 @@ async def update_class(
     if not await has_feature(tenant.id, _FEATURE, db):
         raise HTTPException(status_code=403, detail="Feature no disponible en tu plan")
     updates = body.model_dump(exclude_unset=True)
-    definition = await update_definition(tenant.id, class_id, updates, db)
+    try:
+        definition = await update_definition(tenant.id, class_id, updates, db)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not definition:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
     await db.commit()

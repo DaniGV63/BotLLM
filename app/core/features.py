@@ -245,6 +245,31 @@ FEATURE_REGISTRY: dict[str, FeatureDefinition] = {
         version="v1.1",
     ),
 
+    "admin.work_blocks": FeatureDefinition(
+        key="admin.work_blocks",
+        name="Configuracion horario",
+        description="Configuracion de horarios de atencion del negocio desde panel admin",
+        plans=(TenantPlan.FREE_TRIAL, TenantPlan.PAID),
+        status=FeatureStatus.IMPLEMENTED,
+        difficulty=FeatureDifficulty.M,
+        priority=FeaturePriority.ALTA,
+        stability=FeatureStability.BETA,
+        conversion_impact=ConversionImpact.MEDIO,
+        version="v1.6",
+    ),
+    "admin.calendar_view": FeatureDefinition(
+        key="admin.calendar_view",
+        name="Vista calendario admin",
+        description="Vista de calendario integrada en panel admin con FullCalendar",
+        plans=(TenantPlan.FREE_TRIAL, TenantPlan.PAID),
+        status=FeatureStatus.IMPLEMENTED,
+        difficulty=FeatureDifficulty.L,
+        priority=FeaturePriority.ALTA,
+        stability=FeatureStability.BETA,
+        conversion_impact=ConversionImpact.ALTO,
+        version="v1.6",
+    ),
+
     # --- Security (always_enabled) ---
     "security.hmac_validation": FeatureDefinition(
         key="security.hmac_validation",

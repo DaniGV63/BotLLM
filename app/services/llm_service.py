@@ -116,6 +116,12 @@ async def generate_response(
 - Es primera interaccion: {context.get("es_primera_interaccion", False)}
 """
 
+    if context.get("business_hours"):
+        system_content += (
+            f"\n## Horarios de atención del negocio\n"
+            f"{context['business_hours']}\n"
+        )
+
     if context.get("free_slots"):
         system_content += (
             f"\n## Huecos disponibles\n"

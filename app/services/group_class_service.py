@@ -25,6 +25,40 @@ MADRID_TZ = ZoneInfo("Europe/Madrid")
 _DAY_NAMES_ES = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
 
 
+def _validate_against_work_blocks(
+    work_blocks: dict | None,
+    dias_semana: list[int],
+    hora: str,
+    duracion_min: int,
+) -> str | None:
+    """Valida que la clase cae dentro de los work_blocks del tenant.
+
+    Returns:
+        None si es valido, string con error si no.
+    """
+    if not work_blocks:
+        return None
+    h, m = map(int, hora.split(":"))
+    class_start_min = h * 60 + m
+    class_end_min = class_start_min + duracion_min
+    for day in dias_semana:
+        blocks = work_blocks.get(str(day), [])
+        if not blocks:
+            return f"El día {_DAY_NAMES_ES[day]} está cerrado según el horario configurado"
+        fits = False
+        for block in blocks:
+            bh, bm = map(int, block[0].split(":"))
+            eh, em = map(int, block[1].split(":"))
+            block_start = bh * 60 + bm
+            block_end = eh * 60 + em
+            if class_start_min >= block_start and class_end_min <= block_end:
+                fits = True
+                break
+        if not fits:
+            return f"La clase {hora} ({duracion_min}min) no cabe en los bloques del {_DAY_NAMES_ES[day]}"
+    return None
+
+
 # ---------------------------------------------------------------------------
 # CRUD definiciones
 # ---------------------------------------------------------------------------
@@ -39,6 +73,15 @@ async def create_definition(
     max_capacidad: int,
     db: AsyncSession,
 ) -> GroupClassDefinition:
+    # Validar contra work_blocks del tenant
+    tenant = await db.get(Tenant, tenant_id)
+    if tenant:
+        err = _validate_against_work_blocks(
+            getattr(tenant, "work_blocks", None), dias_semana, hora, duracion_min,
+        )
+        if err:
+            raise ValueError(err)
+
     definition = GroupClassDefinition(
         tenant_id=tenant_id,
         nombre=nombre,
@@ -68,6 +111,18 @@ async def update_definition(
     definition = result.scalar_one_or_none()
     if not definition:
         return None
+    # Validar contra work_blocks si cambian dias/hora/duracion
+    if any(k in updates for k in ("dias_semana", "hora", "duracion_min")):
+        tenant = await db.get(Tenant, tenant_id)
+        if tenant:
+            check_dias = updates.get("dias_semana", json.loads(definition.dias_semana))
+            check_hora = updates.get("hora", definition.hora)
+            check_dur = updates.get("duracion_min", definition.duracion_min)
+            err = _validate_against_work_blocks(
+                getattr(tenant, "work_blocks", None), check_dias, check_hora, check_dur,
+            )
+            if err:
+                raise ValueError(err)
     if "dias_semana" in updates:
         updates["dias_semana"] = json.dumps(updates["dias_semana"])
     for field, value in updates.items():

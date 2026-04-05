@@ -18,6 +18,26 @@ _DAY_NAMES = [
     "lunes", "martes", "miercoles", "jueves",
     "viernes", "sabado", "domingo",
 ]
+_DAY_NAMES_ES = [
+    "Lunes", "Martes", "Miércoles", "Jueves",
+    "Viernes", "Sábado", "Domingo",
+]
+
+
+def format_work_blocks_for_prompt(work_blocks: dict | None) -> str:
+    """Genera texto legible de horarios para inyectar en el prompt del LLM."""
+    if not work_blocks:
+        return ""
+    lines = []
+    for day_idx in range(7):
+        day_name = _DAY_NAMES_ES[day_idx]
+        blocks = work_blocks.get(str(day_idx), [])
+        if not blocks:
+            lines.append(f"- {day_name}: Cerrado")
+        else:
+            hours = " y ".join(f"{b[0]} - {b[1]}" for b in blocks)
+            lines.append(f"- {day_name}: {hours}")
+    return "\n".join(lines)
 
 # Bloques horarios por dia de semana (L-J: 09-14 + 16-20:30 | V: 09-15 | S-D cerrado)
 WORK_BLOCKS: dict[int, list[tuple[str, str]]] = {
@@ -34,14 +54,29 @@ def _parse_hhmm(hhmm: str, base: datetime) -> datetime:
     return base.replace(hour=h, minute=m, second=0, microsecond=0)
 
 
-def _generate_day_slots(day: datetime, duration_minutes: int) -> list[datetime]:
+def _parse_tenant_work_blocks(raw: dict | None) -> dict[int, list[tuple[str, str]]]:
+    """Convierte work_blocks JSON del tenant al formato interno."""
+    if not raw:
+        return WORK_BLOCKS
+    return {
+        int(k): [(b[0], b[1]) for b in v]
+        for k, v in raw.items()
+    }
+
+
+def _generate_day_slots(
+    day: datetime,
+    duration_minutes: int,
+    work_blocks: dict[int, list[tuple[str, str]]] | None = None,
+) -> list[datetime]:
+    blocks = work_blocks or WORK_BLOCKS
     slots = []
-    for start_str, end_str in WORK_BLOCKS.get(day.weekday(), []):
+    for start_str, end_str in blocks.get(day.weekday(), []):
         slot = _parse_hhmm(start_str, day)
         block_end = _parse_hhmm(end_str, day)
         while slot + timedelta(minutes=duration_minutes) <= block_end:
             slots.append(slot)
-            slot += timedelta(hours=1)
+            slot += timedelta(minutes=duration_minutes)
     return slots
 
 
@@ -74,6 +109,10 @@ async def get_free_slots(
     now = datetime.now(MADRID_TZ)
     time_max = now + timedelta(days=days_ahead)
 
+    # Work blocks y duración del tenant (o defaults)
+    tenant_blocks = _parse_tenant_work_blocks(getattr(tenant, "work_blocks", None))
+    slot_dur = getattr(tenant, "slot_duration_minutes", None) or duration_minutes
+
     svc = await asyncio.to_thread(
         build, "calendar", "v3", credentials=creds, cache_discovery=False
     )
@@ -95,11 +134,11 @@ async def get_free_slots(
             hour=0, minute=0, second=0, microsecond=0
         )
         day_offset += 1
-        if day.weekday() not in WORK_BLOCKS:
+        if day.weekday() not in tenant_blocks:
             continue
         free_slots = [
-            s for s in _generate_day_slots(day, duration_minutes)
-            if s > now and not any(_overlaps(s, duration_minutes, ev) for ev in existing_events)
+            s for s in _generate_day_slots(day, slot_dur, tenant_blocks)
+            if s > now and not any(_overlaps(s, slot_dur, ev) for ev in existing_events)
         ]
         if free_slots:
             result.append({

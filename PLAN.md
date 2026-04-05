@@ -168,6 +168,7 @@ Attendoo/
 ├── CLAUDE.md                          ← guía compacta para Claude Code
 ├── PLAN.md                            ← este archivo
 ├── LOGICA.md                          ← lógica LLM: prompts, flujo, respuestas
+├── FEATURES.md                        ← inventario features + planes (v1.2.2+)
 ├── .env                               ← NUNCA commitear
 ├── .env.example
 ├── .gitignore
@@ -181,6 +182,10 @@ Attendoo/
 │   ├── intent_detection.md            ← prompt para detectar intención
 │   ├── response_generation.md         ← prompt para generar respuesta final
 │   └── negocio.md                     ← info del fisio (servicios, horarios, FAQ)
+├── docs/
+│   ├── BACKLOG.md                     ← backlog completo (26 tareas, bloques A-E)
+│   ├── PLAN_V1.3.0.md                ← plan detallado v1.3.0/v1.5.0
+│   └── SESSION_2026_03_29.md          ← última sesión de planificación
 ├── alembic/
 │   └── versions/
 ├── app/
@@ -189,36 +194,47 @@ Attendoo/
 │   │   ├── config.py                  ← Settings pydantic-settings
 │   │   ├── database.py                ← engine async, SessionLocal, get_db
 │   │   ├── redis.py                   ← lazy singleton Redis
-│   │   └── security.py               ← HMAC, Fernet, bcrypt, JWT
+│   │   ├── security.py               ← HMAC, Fernet, bcrypt, JWT
+│   │   └── features.py               ← FEATURE_REGISTRY, has_feature(), require_feature()
 │   ├── models/
 │   │   ├── __init__.py
-│   │   ├── tenant.py                  ← modelo Tenant
-│   │   ├── conversation.py            ← modelo Conversation
-│   │   ├── enums.py                   ← ConversationState (ACTIVA/INACTIVA), MessageRole
-│   │   └── message.py                 ← role: user/assistant, intent, action
+│   │   ├── tenant.py                  ← modelo Tenant (+plan, feature_overrides, wa_personal_phone)
+│   │   ├── conversation.py            ← modelo Conversation (estado: ACTIVA/INACTIVA/DERIVADA)
+│   │   ├── enums.py                   ← ConversationState, MessageRole
+│   │   ├── message.py                 ← role: user/assistant, intent, action, sender_name
+│   │   └── group_class.py            ← GroupClassDefinition, Session, Inscription
 │   ├── schemas/
 │   │   ├── __init__.py
-│   │   ├── llm.py                     ← LLMResponse, ActionCreate, ActionModify, etc.
-│   │   └── admin.py                   ← TenantRead, TenantOnboardingStatus, etc.
+│   │   ├── llm.py                     ← LLMResponse, ActionCreate (+is_group_class, session_id)
+│   │   └── admin.py                   ← TenantRead, GroupClassCreate/Read, etc.
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── llm_client.py             ← wrapper: OpenAIClient + GeminiClient + singleton
 │   │   ├── llm_service.py            ← detect_intent() + generate_response()
 │   │   ├── calendar_service.py       ← get_free_slots, get/create/modify/cancel appointment
-│   │   ├── agent.py                   ← orquestador (≤200 líneas)
+│   │   ├── agent.py                   ← orquestador (excepción líneas, ~400)
 │   │   ├── conversation.py            ← historial + deactivate/reactivate
 │   │   ├── whatsapp_service.py       ← parse_incoming + send_text
 │   │   ├── email_service.py          ← Gmail API send
-│   │   └── backup_service.py         ← backup/restore V2 multi-tenant (JSON)
+│   │   ├── backup_service.py         ← backup/restore V2 multi-tenant (JSON)
+│   │   ├── derivation_service.py     ← orquesta derivación (estado + email + WS + Redis)
+│   │   ├── wa_bridge_service.py      ← fisio responde desde WA personal (prefijos N.)
+│   │   ├── websocket_manager.py      ← ConnectionManager singleton por tenant
+│   │   └── group_class_service.py    ← CRUD clases, sesiones lazy, inscripciones
 │   └── routers/
 │       ├── __init__.py
 │       ├── webhook.py                 ← GET/POST webhook Meta
 │       ├── admin.py                   ← panel admin (login, config, métricas)
+│       ├── admin_chat.py              ← WS chat handoff + REST derivaciones
+│       ├── admin_classes.py           ← CRUD clases grupales, sesiones, inscritos
+│       ├── admin_features.py          ← endpoints features por tenant
 │       ├── superadmin.py              ← CRUD tenants, usuarios, onboarding status
 │       └── oauth.py                   ← flujo OAuth2 Google Calendar/Gmail
 ├── static/
 │   ├── admin.html                     ← panel admin (template HTML)
 │   ├── admin.js                       ← lógica JS del panel admin
+│   ├── admin-chat.js                  ← WebSocket client, chat UI derivaciones
+│   ├── admin-classes.js               ← UI gestión clases grupales
 │   └── attendoo.css                   ← estilos compartidos
 ├── landing/
 │   └── index.html                     ← landing page comercial
@@ -226,10 +242,15 @@ Attendoo/
 ├── restore_tenant.py                  ← CLI: restaurar desde backup JSON
 └── tests/
     ├── conftest.py
-    ├── test_webhook.py
-    ├── test_llm_service.py
-    ├── test_calendar_service.py
-    └── test_agent.py
+    ├── unit/
+    │   ├── test_webhook.py
+    │   ├── test_llm_service.py
+    │   ├── test_calendar_service.py
+    │   ├── test_agent.py
+    │   ├── test_features.py           ← tests feature flags + planes
+    │   └── test_group_class_service.py ← tests clases grupales
+    └── integration/
+        └── test_group_classes_flow.py  ← flujo completo clases grupales
 ```
 
 ---
@@ -462,24 +483,31 @@ async def send_notification_email(
 
 ```sql
 CREATE TABLE tenants (
-    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    slug                     VARCHAR(50) UNIQUE NOT NULL,
-    nombre_negocio           VARCHAR(200) NOT NULL,
-    email_notificaciones     VARCHAR(200) NOT NULL,
-    whatsapp_phone_number_id VARCHAR(50) UNIQUE NOT NULL,
-    whatsapp_token           TEXT,            -- encriptado Fernet
-    whatsapp_verify_token    VARCHAR(100),
-    meta_app_secret          TEXT,            -- encriptado Fernet
-    google_calendar_id       VARCHAR(200),
-    google_access_token      TEXT,            -- encriptado Fernet
-    google_refresh_token     TEXT,            -- encriptado Fernet
-    google_token_expiry      TIMESTAMPTZ,
-    bot_activo               BOOLEAN NOT NULL DEFAULT TRUE,
-    rate_limit_per_minute    INTEGER DEFAULT 20,
-    max_citas_activas        INTEGER DEFAULT 3,
-    activo                   BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug                        VARCHAR(50) UNIQUE NOT NULL,
+    nombre_negocio              VARCHAR(200) NOT NULL,
+    email_notificaciones        VARCHAR(200) NOT NULL,
+    whatsapp_phone_number_id    VARCHAR(50) UNIQUE NOT NULL,
+    whatsapp_token              TEXT,            -- encriptado Fernet
+    whatsapp_verify_token       VARCHAR(100),
+    meta_app_secret             TEXT,            -- encriptado Fernet
+    google_calendar_id          VARCHAR(200),
+    google_access_token         TEXT,            -- encriptado Fernet
+    google_refresh_token        TEXT,            -- encriptado Fernet
+    google_token_expiry         TIMESTAMPTZ,
+    bot_activo                  BOOLEAN NOT NULL DEFAULT TRUE,
+    rate_limit_per_minute       INTEGER DEFAULT 20,
+    max_citas_activas           INTEGER DEFAULT 3,
+    activo                      BOOLEAN NOT NULL DEFAULT TRUE,
+    -- v1.2.2: feature flags
+    plan                        VARCHAR(20) NOT NULL DEFAULT 'SIN_PLAN',
+    plan_expires_at             TIMESTAMPTZ,
+    feature_overrides           JSONB NOT NULL DEFAULT '{}',
+    -- v1.3.0: derivación handoff
+    wa_personal_phone           VARCHAR(20),     -- teléfono personal del fisio
+    derivation_timeout_minutes  INTEGER NOT NULL DEFAULT 30,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
 
@@ -495,6 +523,7 @@ CREATE TABLE admin_users (
     password_hash     VARCHAR(200) NOT NULL,
     role              VARCHAR(20) NOT NULL CHECK (role IN ('super_admin', 'tenant_admin')),
     email             VARCHAR(200),
+    wa_personal_phone VARCHAR(20),           -- v1.3.0: teléfono WA del fisio
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
@@ -508,7 +537,7 @@ CREATE TABLE conversations (
     wa_phone          VARCHAR(20) NOT NULL,
     nombre_paciente   VARCHAR(200),
     estado            VARCHAR(20) NOT NULL DEFAULT 'ACTIVA'
-                      CHECK (estado IN ('ACTIVA', 'INACTIVA')),  -- INACTIVA = despedida o >24h
+                      CHECK (estado IN ('ACTIVA', 'INACTIVA', 'DERIVADA')),
     ultimo_mensaje_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -531,7 +560,55 @@ CREATE TABLE messages (
     intent            VARCHAR(30),
     action_executed   VARCHAR(50),
     processing_ms     INTEGER,
+    sender_name       VARCHAR(200),          -- v1.3.0: nombre del remitente (fisio en handoff)
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+### Tabla `group_class_definitions` (v1.5.0+)
+
+```sql
+CREATE TABLE group_class_definitions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    nombre          VARCHAR(200) NOT NULL,
+    dias_semana     VARCHAR(20) NOT NULL,    -- JSON array: [0,2,4] = L,X,V
+    hora            VARCHAR(5) NOT NULL,     -- "10:00"
+    duracion_min    INTEGER NOT NULL DEFAULT 60,
+    max_capacidad   INTEGER NOT NULL DEFAULT 8,
+    activa          BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+### Tabla `group_class_sessions` (v1.5.0+)
+
+```sql
+CREATE TABLE group_class_sessions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    definition_id   UUID NOT NULL REFERENCES group_class_definitions(id) ON DELETE CASCADE,
+    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    fecha           DATE NOT NULL,
+    hora            VARCHAR(5) NOT NULL,
+    estado          VARCHAR(20) NOT NULL DEFAULT 'PROGRAMADA',  -- PROGRAMADA/CANCELADA
+    google_event_id VARCHAR(200),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_session_definition_fecha UNIQUE (definition_id, fecha)
+);
+```
+
+### Tabla `group_class_inscriptions` (v1.5.0+)
+
+```sql
+CREATE TABLE group_class_inscriptions (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id        UUID NOT NULL REFERENCES group_class_sessions(id) ON DELETE CASCADE,
+    tenant_id         UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    wa_phone          VARCHAR(20) NOT NULL,
+    nombre_paciente   VARCHAR(200),
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_inscription_session_phone UNIQUE (session_id, wa_phone)
 );
 ```
 
@@ -742,6 +819,51 @@ Cada fase = tag en GitHub. No saltar fases.
 ✅ Rename BotLLM → Attendoo en toda la codebase
 ✅ Landing page mejorada
 ✅ git tag v1.2.0
+```
+
+### FASE 8 — Feature flags + landing polish → `v1.2.1` / `v1.2.2` ✅
+```
+✅ Landing: nuevo headline, scroll suave, hover tarjetas, icono WA nativo
+✅ app/core/features.py — FEATURE_REGISTRY (37 features), has_feature(), require_feature()
+✅ Planes: SIN_PLAN / FREE_TRIAL / PAID con overrides JSONB por tenant
+✅ app/routers/admin_features.py — endpoints features
+✅ Migración Alembic: +3 columnas en tenants (plan, plan_expires_at, feature_overrides)
+✅ FEATURES.md — inventario completo
+✅ git tag v1.2.1, v1.2.2
+```
+
+### FASE 9 — Derivación handoff → `v1.3.0` ✅
+```
+✅ Estado DERIVADA: bypass LLM, mensajes del paciente notificados al fisio
+✅ app/services/derivation_service.py — orquesta derivación (estado + email + WS + Redis)
+✅ app/services/websocket_manager.py — ConnectionManager singleton por tenant
+✅ app/routers/admin_chat.py — WS /admin/chat/ws + REST /send, /end, /active, /messages
+✅ app/services/wa_bridge_service.py — fisio responde desde WA personal (prefijos N., comando /bot)
+✅ Webhook detecta si sender es fisio → rutea a WA bridge (sin LLM)
+✅ Alerta cancelación <24h por email (handoff.cancellation_alert)
+✅ UI: tab "Chat derivaciones" con lista activa, chat, badge, sonido
+✅ Campos nuevos: wa_personal_phone, derivation_timeout_minutes, sender_name
+✅ git tag v1.3.0
+```
+
+### FASE 10 — Polish v1.4.0 → `v1.4.0` ✅
+```
+✅ Superadmin puede editar wa_personal_phone y derivation_timeout_minutes
+✅ Cambiar wa_personal_phone invalida cache Redis del fisio
+✅ Filtro ?estado= en GET /admin/conversations (ACTIVA, INACTIVA, DERIVADA)
+✅ git tag v1.4.0
+```
+
+### FASE 11 — Clases grupales → `v1.5.0` ✅
+```
+✅ Modelos BD: GroupClassDefinition, GroupClassSession, GroupClassInscription + migración
+✅ app/services/group_class_service.py — CRUD, sesiones lazy (INSERT ON CONFLICT DO NOTHING), inscripciones (SELECT FOR UPDATE)
+✅ Slots grupales mezclados con individuales en intent agendar_cita (feature groups.sessions)
+✅ ActionCreate con is_group_class + session_id → inscribe_patient() en lugar de Calendar
+✅ app/routers/admin_classes.py — CRUD definiciones, sesiones, inscritos (feature gate)
+✅ UI: tab "Clases grupales" en panel admin
+✅ 20 tests nuevos (unitarios + integración), total 68/68
+✅ git tag v1.5.0
 ```
 
 ---
