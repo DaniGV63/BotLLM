@@ -1,6 +1,8 @@
-"""Router calendario admin: eventos unificados + bloqueo de huecos."""
+"""Router calendario admin: eventos unificados + bloqueo de huecos + gestión sesiones grupales."""
 
 import asyncio
+import json
+import uuid
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -13,10 +15,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.features import has_feature
-from app.models.group_class import GroupClassSession, SessionState
+from app.models.group_class import (
+    GroupClassDefinition,
+    GroupClassInscription,
+    GroupClassSession,
+    SessionState,
+)
 from app.models.tenant import Tenant
 from app.routers.admin import TokenData, get_current_user, require_tenant_scope
+from app.schemas.admin import CalendarClassCreate, CalendarSessionDetail, GroupInscriptionRead
 from app.services.google_auth import get_google_creds
+from app.services.group_class_service import (
+    _validate_against_work_blocks,
+    create_definition,
+    generate_upcoming_sessions,
+)
 
 router = APIRouter(prefix="/admin/calendar", tags=["admin-calendar"])
 logger = structlog.get_logger()
@@ -149,6 +162,7 @@ async def get_calendar_events(
                 "end": sess_end.isoformat(),
                 "color": "#10b981",
                 "type": "group_class",
+                "definition_id": str(s.definition_id),
             })
     except Exception as e:
         logger.warning("group_sessions_fetch_error", error=str(e))
@@ -187,3 +201,163 @@ async def block_calendar_slot(
     except Exception as e:
         logger.error("block_slot_error", error=str(e))
         raise HTTPException(status_code=500, detail="Error al bloquear horario")
+
+
+_FEATURE_GROUPS = "groups.templates"
+
+
+@router.post("/create-class")
+async def create_class_from_calendar(
+    body: CalendarClassCreate,
+    tenant: Tenant = Depends(require_tenant_scope),
+    _user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Crear sesión grupal (puntual o recurrente) desde el calendario."""
+    if not await has_feature(tenant.id, _FEATURE_GROUPS, db):
+        raise HTTPException(status_code=403, detail="No disponible en tu plan")
+
+    from datetime import date as date_type
+
+    try:
+        fecha = date_type.fromisoformat(body.fecha)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Fecha inválida")
+
+    if fecha < datetime.now(MADRID_TZ).date():
+        raise HTTPException(status_code=400, detail="No se puede crear sesión en el pasado")
+
+    if body.recurrente:
+        if not body.dias_semana:
+            raise HTTPException(status_code=400, detail="Selecciona al menos un día para sesión recurrente")
+        try:
+            definition = await create_definition(
+                tenant.id, body.nombre, body.dias_semana, body.hora,
+                body.duracion_min, body.max_capacidad, db,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        await generate_upcoming_sessions(tenant.id, definition.id, 30, db)
+        await db.commit()
+        return {"ok": True, "definition_id": str(definition.id), "recurrente": True}
+    else:
+        dias_semana = [fecha.weekday()]
+        err = _validate_against_work_blocks(
+            tenant.work_blocks, dias_semana, body.hora, body.duracion_min,
+        )
+        if err:
+            raise HTTPException(status_code=400, detail=err)
+
+        definition = GroupClassDefinition(
+            tenant_id=tenant.id,
+            nombre=body.nombre,
+            dias_semana=json.dumps(dias_semana),
+            hora=body.hora,
+            duracion_min=body.duracion_min,
+            max_capacidad=body.max_capacidad,
+            activa=False,
+        )
+        db.add(definition)
+        await db.flush()
+
+        session = GroupClassSession(
+            id=uuid.uuid4(),
+            definition_id=definition.id,
+            tenant_id=tenant.id,
+            fecha=fecha,
+            hora=body.hora,
+            estado=SessionState.PROGRAMADA.value,
+        )
+        db.add(session)
+        await db.commit()
+        return {"ok": True, "definition_id": str(definition.id), "recurrente": False}
+
+
+@router.get("/session/{session_id}")
+async def get_session_detail(
+    session_id: uuid.UUID,
+    tenant: Tenant = Depends(require_tenant_scope),
+    _user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CalendarSessionDetail:
+    """Detalle de una sesión grupal con inscripciones."""
+    if not await has_feature(tenant.id, _FEATURE_GROUPS, db):
+        raise HTTPException(status_code=403, detail="No disponible en tu plan")
+
+    result = await db.execute(
+        select(GroupClassSession).where(
+            GroupClassSession.id == session_id,
+            GroupClassSession.tenant_id == tenant.id,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+
+    def_result = await db.execute(
+        select(GroupClassDefinition).where(GroupClassDefinition.id == session.definition_id)
+    )
+    definition = def_result.scalar_one()
+
+    insc_result = await db.execute(
+        select(GroupClassInscription).where(
+            GroupClassInscription.session_id == session_id,
+        ).order_by(GroupClassInscription.created_at)
+    )
+    inscriptions = insc_result.scalars().all()
+
+    try:
+        dias = json.loads(definition.dias_semana)
+    except (json.JSONDecodeError, TypeError):
+        dias = []
+
+    fecha_str = session.fecha if isinstance(session.fecha, str) else session.fecha.isoformat()
+
+    return CalendarSessionDetail(
+        session_id=session.id,
+        definition_id=definition.id,
+        nombre=definition.nombre,
+        fecha=fecha_str,
+        hora=session.hora,
+        duracion_min=definition.duracion_min,
+        max_capacidad=definition.max_capacidad,
+        estado=session.estado,
+        activa=definition.activa,
+        dias_semana=dias,
+        inscritos=len(inscriptions),
+        inscriptions=[
+            GroupInscriptionRead(
+                id=i.id,
+                wa_phone=i.wa_phone,
+                nombre_paciente=i.nombre_paciente,
+                created_at=i.created_at,
+            )
+            for i in inscriptions
+        ],
+    )
+
+
+@router.delete("/session/{session_id}")
+async def cancel_session(
+    session_id: uuid.UUID,
+    tenant: Tenant = Depends(require_tenant_scope),
+    _user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Cancelar una sesión grupal específica."""
+    if not await has_feature(tenant.id, _FEATURE_GROUPS, db):
+        raise HTTPException(status_code=403, detail="No disponible en tu plan")
+
+    result = await db.execute(
+        select(GroupClassSession).where(
+            GroupClassSession.id == session_id,
+            GroupClassSession.tenant_id == tenant.id,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+
+    session.estado = SessionState.CANCELADA.value
+    await db.commit()
+    return {"ok": True}

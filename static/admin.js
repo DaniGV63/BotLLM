@@ -126,9 +126,9 @@ function renderTabsForRole() {
     const show = (id, v) => { const el = document.getElementById('tab-btn-' + id); if (el) el.classList.toggle('hidden', !v); };
     show('tenants', isSuperOnly); show('usuarios', isSuperOnly);
     show('configuracion', hasTenant); show('google', isSuperWithTenant);
-    show('conversaciones', hasTenant); show('calendario', hasTenant); show('dashboard', hasTenant); show('chat', hasTenant); show('clases', hasTenant);
+    show('conversaciones', hasTenant); show('calendario', hasTenant); show('dashboard', hasTenant); show('chat', hasTenant);
 }
-const ALL_TABS = ['tenants','usuarios','configuracion','google','conversaciones','calendario','chat','clases','dashboard'];
+const ALL_TABS = ['tenants','usuarios','configuracion','google','conversaciones','calendario','chat','dashboard'];
 function showTab(name) {
     ALL_TABS.forEach(t => {
         document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
@@ -144,7 +144,6 @@ function showTab(name) {
     if (name === 'dashboard') { loadMetrics(); dashboardRefreshInterval = setInterval(() => loadMetrics(), 10000); if (typeof lucide !== 'undefined') lucide.createIcons(); }
     if (name === 'calendario') { if (typeof initCalendar === 'function') initCalendar(); }
     if (name === 'chat') { if (typeof initChat === 'function') initChat(); }
-    if (name === 'clases') { if (typeof loadClasses === 'function') loadClasses(); }
     if (name === 'tenants') loadTenants();
     if (name === 'usuarios') loadUsers();
     if (name === 'configuracion') loadTenant();

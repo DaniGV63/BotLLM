@@ -70,9 +70,7 @@
                 <i data-lucide="headphones" class="w-4 h-4 shrink-0"></i> Chat derivaciones
                 <span id="chat-badge" class="hidden ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold min-w-[20px] text-center"></span>
             </button>
-            <button onclick="showTab('clases')" id="tab-btn-clases" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
-                <i data-lucide="calendar-range" class="w-4 h-4 shrink-0"></i> Clases grupales
-            </button>
+
             <button onclick="showTab('calendario')" id="tab-btn-calendario" class="hidden w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors duration-150">
                 <i data-lucide="calendar-days" class="w-4 h-4 shrink-0"></i> Calendario
             </button>
@@ -313,107 +311,7 @@
             </div>
         </div>
 
-        <!-- Tab: Clases grupales -->
-        <div id="tab-clases" class="hidden p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold text-gray-800">Clases grupales</h2>
-                <button onclick="showCreateClassForm()" class="bg-teal-600 hover:bg-teal-700 text-white text-sm px-3 py-1.5 rounded-lg transition-colors">+ Nueva clase</button>
-            </div>
-            <!-- Formulario nueva/editar clase -->
-            <div id="class-form" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
-                <h3 id="class-form-title" class="text-sm font-semibold text-gray-700 mb-3">Nueva clase</h3>
-                <input type="hidden" id="class-form-id">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                    <div>
-                        <label class="text-xs text-gray-500 block mb-1">Nombre</label>
-                        <input id="class-form-nombre" type="text" class="w-full border rounded p-2 text-sm" placeholder="Pilates, Yoga...">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 block mb-1">Hora (HH:MM)</label>
-                        <input id="class-form-hora" type="text" class="w-full border rounded p-2 text-sm" placeholder="10:00">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 block mb-1">Duración (min)</label>
-                        <input id="class-form-duracion" type="number" class="w-full border rounded p-2 text-sm" value="60">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 block mb-1">Aforo máximo</label>
-                        <input id="class-form-aforo" type="number" class="w-full border rounded p-2 text-sm" value="8">
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="text-xs text-gray-500 block mb-1">Días de la semana</label>
-                    <div class="flex gap-2 flex-wrap">
-                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="0"> Lun</label>
-                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="1"> Mar</label>
-                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="2"> Mié</label>
-                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="3"> Jue</label>
-                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="4"> Vie</label>
-                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="5"> Sáb</label>
-                        <label class="flex items-center gap-1 text-sm"><input type="checkbox" class="day-check" value="6"> Dom</label>
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="saveClass()" class="bg-teal-600 hover:bg-teal-700 text-white text-sm px-3 py-1.5 rounded-lg">Guardar</button>
-                    <button onclick="document.getElementById('class-form').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-sm px-3 py-1.5 rounded-lg border">Cancelar</button>
-                </div>
-            </div>
-            <!-- Tabla de clases -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-4">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
-                        <tr>
-                            <th class="px-4 py-3 text-left">Nombre</th>
-                            <th class="px-4 py-3 text-left">Días</th>
-                            <th class="px-4 py-3 text-left">Hora</th>
-                            <th class="px-4 py-3 text-left">Aforo</th>
-                            <th class="px-4 py-3 text-left">Estado</th>
-                            <th class="px-4 py-3 text-left">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="classes-table-body" class="divide-y divide-gray-100"></tbody>
-                </table>
-            </div>
-            <!-- Panel sesiones -->
-            <div id="sessions-panel" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 id="sessions-panel-title" class="text-sm font-semibold text-gray-700">Sesiones</h3>
-                    <div class="flex gap-2">
-                        <button onclick="generateSessions()" class="text-teal-600 hover:text-teal-800 text-sm border border-teal-300 px-2 py-1 rounded">Generar 14 días</button>
-                        <button onclick="document.getElementById('sessions-panel').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
-                    </div>
-                </div>
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
-                        <tr>
-                            <th class="px-3 py-2 text-left">Fecha</th>
-                            <th class="px-3 py-2 text-left">Hora</th>
-                            <th class="px-3 py-2 text-left">Estado</th>
-                            <th class="px-3 py-2 text-left">Inscritos</th>
-                            <th class="px-3 py-2 text-left">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="sessions-table-body" class="divide-y divide-gray-100"></tbody>
-                </table>
-            </div>
-            <!-- Panel inscripciones -->
-            <div id="inscriptions-panel" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-4 mt-4">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 id="inscriptions-panel-title" class="text-sm font-semibold text-gray-700">Inscritos</h3>
-                    <button onclick="document.getElementById('inscriptions-panel').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
-                </div>
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
-                        <tr>
-                            <th class="px-3 py-2 text-left">Teléfono</th>
-                            <th class="px-3 py-2 text-left">Nombre</th>
-                            <th class="px-3 py-2 text-left">Fecha inscripción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="inscriptions-table-body" class="divide-y divide-gray-100"></tbody>
-                </table>
-            </div>
-        </div>
+
 
         <!-- Tab: Calendario -->
         <div id="tab-calendario" class="hidden">
@@ -422,7 +320,7 @@
                     <h2 class="text-lg font-semibold">Calendario</h2>
                     <div class="flex items-center gap-2">
                         <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded bg-blue-500 inline-block"></span> Citas</span>
-                        <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded bg-green-500 inline-block"></span> Grupales</span>
+                        <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded bg-green-500 inline-block"></span> Sesiones grupales</span>
                         <span class="flex items-center gap-1 text-xs text-gray-500"><span class="w-3 h-3 rounded bg-gray-400 inline-block"></span> Bloqueado</span>
                     </div>
                 </div>
@@ -442,6 +340,122 @@
                 <div class="flex justify-end gap-2">
                     <button onclick="closeBlockModal()" class="px-4 py-2 text-sm rounded-lg border text-gray-600 hover:bg-gray-50">Cancelar</button>
                     <button onclick="confirmBlockSlot()" class="px-4 py-2 text-sm rounded-lg bg-gray-700 text-white hover:bg-gray-800">Bloquear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal chooser: Bloquear / Crear sesión -->
+        <div id="action-chooser-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+                <h3 class="font-semibold text-gray-900 mb-1">Nuevo evento</h3>
+                <p id="chooser-time" class="text-sm text-gray-500 mb-5"></p>
+                <div class="space-y-2">
+                    <button onclick="chooserPickBlock()" class="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-3">
+                        <span class="w-3 h-3 rounded bg-gray-400 inline-block shrink-0"></span>
+                        <span class="text-sm font-medium text-gray-700">Bloquear horario</span>
+                    </button>
+                    <button onclick="chooserPickClass()" class="w-full text-left px-4 py-3 rounded-lg border border-green-200 hover:bg-green-50 transition-colors flex items-center gap-3">
+                        <span class="w-3 h-3 rounded bg-green-500 inline-block shrink-0"></span>
+                        <span class="text-sm font-medium text-green-700">Crear sesión grupal</span>
+                    </button>
+                </div>
+                <button onclick="closeChooserModal()" class="mt-4 w-full text-center text-sm text-gray-400 hover:text-gray-600">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- Modal crear sesión grupal -->
+        <div id="cal-class-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+                <h3 class="font-semibold text-gray-900 mb-1">Crear sesión grupal</h3>
+                <p id="cal-class-time" class="text-sm text-gray-500 mb-4"></p>
+                <div id="cal-class-error" class="hidden bg-red-50 border border-red-200 text-red-700 p-2 rounded-lg mb-3 text-sm"></div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Nombre</label>
+                        <input id="cal-class-nombre" type="text" class="w-full p-2 border rounded text-sm" placeholder="Pilates, Yoga...">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Aforo máximo</label>
+                            <input id="cal-class-aforo" type="number" class="w-full p-2 border rounded text-sm" value="8" min="1">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Duración (min)</label>
+                            <input id="cal-class-duracion" type="number" class="w-full p-2 border rounded text-sm" value="60" min="15" step="15">
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input id="cal-class-recurrente" type="checkbox" class="rounded" onchange="toggleCalClassDays()">
+                        <label for="cal-class-recurrente" class="text-sm text-gray-700">¿Repetir semanalmente?</label>
+                    </div>
+                    <div id="cal-class-days-row" class="hidden">
+                        <label class="block text-xs text-gray-500 mb-1">Días de la semana</label>
+                        <div class="flex gap-1">
+                            <button type="button" class="cal-day-btn w-9 h-9 rounded-lg text-xs font-medium border border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-700 transition-colors" data-day="0">L</button>
+                            <button type="button" class="cal-day-btn w-9 h-9 rounded-lg text-xs font-medium border border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-700 transition-colors" data-day="1">M</button>
+                            <button type="button" class="cal-day-btn w-9 h-9 rounded-lg text-xs font-medium border border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-700 transition-colors" data-day="2">X</button>
+                            <button type="button" class="cal-day-btn w-9 h-9 rounded-lg text-xs font-medium border border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-700 transition-colors" data-day="3">J</button>
+                            <button type="button" class="cal-day-btn w-9 h-9 rounded-lg text-xs font-medium border border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-700 transition-colors" data-day="4">V</button>
+                            <button type="button" class="cal-day-btn w-9 h-9 rounded-lg text-xs font-medium border border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-700 transition-colors" data-day="5">S</button>
+                            <button type="button" class="cal-day-btn w-9 h-9 rounded-lg text-xs font-medium border border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-700 transition-colors" data-day="6">D</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-5">
+                    <button onclick="closeCalClassModal()" class="px-4 py-2 text-sm rounded-lg border text-gray-600 hover:bg-gray-50">Cancelar</button>
+                    <button onclick="confirmCalClass()" class="px-4 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700">Crear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal detalle sesión -->
+        <div id="session-detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div class="bg-white rounded-xl shadow-xl p-6 max-w-lg w-full mx-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 id="sd-nombre" class="font-semibold text-gray-900 text-lg"></h3>
+                    <button onclick="closeSessionDetailModal()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+                </div>
+                <!-- Info mode -->
+                <div id="sd-info">
+                    <div class="space-y-2 mb-4">
+                        <p class="text-sm text-gray-600"><span class="font-medium">Fecha:</span> <span id="sd-fecha"></span></p>
+                        <p class="text-sm text-gray-600"><span class="font-medium">Horario:</span> <span id="sd-horario"></span></p>
+                        <p class="text-sm text-gray-600"><span class="font-medium">Duración:</span> <span id="sd-duracion"></span> min</p>
+                        <p class="text-sm text-gray-600"><span class="font-medium">Aforo:</span> <span id="sd-aforo"></span></p>
+                        <p class="text-sm text-gray-600"><span class="font-medium">Estado:</span> <span id="sd-estado-badge"></span></p>
+                        <p id="sd-recurrente-info" class="hidden text-sm text-gray-600"><span class="font-medium">Recurrente:</span> <span id="sd-dias-text"></span></p>
+                    </div>
+                    <!-- Lista inscritos -->
+                    <div class="border-t pt-3">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2">Inscritos</h4>
+                        <div id="sd-inscriptions" class="max-h-40 overflow-y-auto"></div>
+                    </div>
+                </div>
+                <!-- Edit mode -->
+                <div id="sd-edit" class="hidden space-y-3">
+                    <p class="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded">Los cambios afectan a la serie completa</p>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Nombre</label>
+                        <input id="sd-edit-nombre" type="text" class="w-full p-2 border rounded text-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Aforo máximo</label>
+                            <input id="sd-edit-aforo" type="number" class="w-full p-2 border rounded text-sm" min="1">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Duración (min)</label>
+                            <input id="sd-edit-duracion" type="number" class="w-full p-2 border rounded text-sm" min="15" step="15">
+                        </div>
+                    </div>
+                </div>
+                <!-- Actions -->
+                <div class="flex flex-wrap gap-2 mt-5 border-t pt-4">
+                    <button id="sd-btn-edit" onclick="enterEditMode()" class="px-4 py-2 text-sm rounded-lg border text-blue-600 border-blue-200 hover:bg-blue-50">Editar</button>
+                    <button id="sd-btn-save" onclick="saveSessionEdit()" class="hidden px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Guardar</button>
+                    <button id="sd-btn-cancel-edit" onclick="exitEditMode()" class="hidden px-4 py-2 text-sm rounded-lg border text-gray-600 hover:bg-gray-50">Cancelar edición</button>
+                    <button id="sd-btn-cancel-session" onclick="cancelSessionFromDetail()" class="px-4 py-2 text-sm rounded-lg border text-red-600 border-red-200 hover:bg-red-50">Cancelar sesión</button>
+                    <button id="sd-btn-delete-series" class="hidden px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700">Eliminar serie completa</button>
                 </div>
             </div>
         </div>
@@ -552,10 +566,10 @@
         </div>
     </div>
 </div>
-<script src="/static/admin.js?v=164"></script>
-<script src="/static/admin-superadmin.js?v=164"></script>
-<script src="/static/admin-calendar.js?v=164"></script>
-<script src="/static/admin-chat.js?v=164"></script>
-<script src="/static/admin-classes.js?v=164"></script>
+<script src="/static/admin.js?v=168"></script>
+<script src="/static/admin-superadmin.js?v=168"></script>
+<script src="/static/admin-calendar.js?v=168"></script>
+<script src="/static/admin-chat.js?v=168"></script>
+<script src="/static/admin-calendar-classes.js?v=168"></script>
 </body>
 </html>

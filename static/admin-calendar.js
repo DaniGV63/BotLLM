@@ -30,6 +30,7 @@ function initCalendar() {
         nowIndicator: true,
         selectable: true,
         selectMirror: true,
+        unselectAuto: false,
         // 1h slots fuera de horario central, 30min dentro
         slotDuration: '00:30:00',
         slotLabelInterval: '01:00:00',
@@ -51,24 +52,32 @@ function initCalendar() {
         },
 
         select: function(info) {
-            if (info.start < new Date()) {
+            var today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (info.start < today) {
                 calendarInstance.unselect();
                 return;
             }
             blockStart = info.start;
             blockEnd = info.end;
-            var opts = { hour: '2-digit', minute: '2-digit', hour12: false };
-            var dayOpts = { weekday: 'long', day: 'numeric', month: 'long' };
-            document.getElementById('block-modal-time').textContent =
-                info.start.toLocaleDateString('es-ES', dayOpts) + ', '
-                + info.start.toLocaleTimeString('es-ES', opts) + ' - '
-                + info.end.toLocaleTimeString('es-ES', opts);
-            document.getElementById('block-modal-title').value = '';
-            document.getElementById('block-modal').classList.remove('hidden');
+            try {
+                showActionChooser(info.start, info.end);
+            } catch (err) {
+                console.error('showActionChooser error:', err);
+                // Fallback: mostrar chooser modal directamente
+                var chooser = document.getElementById('action-chooser-modal');
+                if (chooser) chooser.classList.remove('hidden');
+            }
         },
 
         eventClick: function(info) {
-            if (info.event.extendedProps && info.event.extendedProps.type === 'work_block') return;
+            var props = info.event.extendedProps || {};
+            if (props.type === 'work_block') return;
+            if (props.type === 'group_class') {
+                var sessionId = info.event.id.replace('group_', '');
+                showSessionDetail(sessionId);
+                return;
+            }
         },
     });
 

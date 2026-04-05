@@ -235,3 +235,31 @@ class GroupInscriptionRead(BaseModel):
     wa_phone: str
     nombre_paciente: str | None
     created_at: datetime
+
+
+# --- Calendar Class Management ---
+
+
+class CalendarClassCreate(BaseModel):
+    nombre: str
+    fecha: str                    # "2026-04-07"
+    hora: str                     # "10:00"
+    duracion_min: int = 60
+    max_capacidad: int = 8
+    recurrente: bool = False
+    dias_semana: list[int] = []   # solo si recurrente=True
+
+
+class CalendarSessionDetail(BaseModel):
+    session_id: UUID
+    definition_id: UUID
+    nombre: str
+    fecha: str
+    hora: str
+    duracion_min: int
+    max_capacidad: int
+    estado: str
+    activa: bool                  # de la definition
+    dias_semana: list[int]        # de la definition
+    inscritos: int
+    inscriptions: list[GroupInscriptionRead]
