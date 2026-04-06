@@ -59,9 +59,9 @@ fi
 echo "=== 4/9 Clonando repositorio ==="
 if [ -d "$APP_DIR" ]; then
     echo "Directorio $APP_DIR ya existe. Haciendo git pull..."
-    cd "$APP_DIR" && git pull origin main
+    cd "$APP_DIR" && git pull origin deployment
 else
-    git clone "$REPO_URL" "$APP_DIR"
+    git clone --branch deployment "$REPO_URL" "$APP_DIR"
     cd "$APP_DIR"
 fi
 
@@ -100,6 +100,7 @@ echo "Dominio configurado: $DOMAIN"
 # --- 8. Build y arrancar ---
 echo "=== 8/9 Construyendo y arrancando servicios ==="
 cd "$APP_DIR"
+set -a && source .env.prod && set +a
 docker compose -f docker-compose.prod.yml up -d --build
 echo "Servicios arrancados."
 
