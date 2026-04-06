@@ -6,7 +6,8 @@ from pathlib import Path
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.staticfiles import StaticFiles
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -91,10 +92,21 @@ if _origins:
     )
 
 
-# 1.4 — Global exception handler
+# 1.4 — Exception handlers: redirige navegadores a landing, JSON para APIs
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404 and "text/html" in request.headers.get("accept", ""):
+        return RedirectResponse("/", status_code=302)
+    if exc.status_code >= 500:
+        structlog.get_logger().error("http_error", path=str(request.url), status=exc.status_code)
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     structlog.get_logger().error("unhandled_exception", path=str(request.url), exc_info=exc)
+    if "text/html" in request.headers.get("accept", ""):
+        return RedirectResponse("/", status_code=302)
     return JSONResponse(status_code=500, content={"detail": "Error interno del servidor"})
 
 
