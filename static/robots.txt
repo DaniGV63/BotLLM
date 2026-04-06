@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /landing/
+
+Disallow: /admin
+Disallow: /webhook
+Disallow: /superadmin
+Disallow: /oauth
+Disallow: /static/

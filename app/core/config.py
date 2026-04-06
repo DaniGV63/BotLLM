@@ -35,6 +35,7 @@ class Settings(BaseSettings):
 
     # App
     BASE_URL: str = "http://localhost:8000"
+    ALLOWED_ORIGINS: str = ""
 
     # Logging
     LOG_LEVEL: str = "INFO"

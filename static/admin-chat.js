@@ -30,7 +30,7 @@ function teardownChat() {
 // ---------------------------------------------------------------------------
 
 function connectChatWs() {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('admin_token');
     if (!token) return;
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -118,7 +118,7 @@ function onDerivationEnded(msg) {
 // ---------------------------------------------------------------------------
 
 async function refreshDerivations() {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('admin_token');
     if (!token) return;
     try {
         const res = await fetch('/admin/chat/active', {
@@ -188,7 +188,7 @@ async function openChat(convId) {
     document.getElementById('chat-messages').innerHTML = '';
     renderDerivationsList();
 
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('admin_token');
     try {
         const res = await fetch(`/admin/chat/messages/${convId}`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -218,7 +218,7 @@ async function sendChatMessage() {
         }));
         appendChatBubble('therapist', content, new Date().toISOString());
     } else {
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('admin_token');
         try {
             await fetch('/admin/chat/send', {
                 method: 'POST',
@@ -235,7 +235,7 @@ async function sendChatMessage() {
 
 async function endDerivation() {
     if (!activeChatConvId) return;
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('admin_token');
     try {
         await fetch('/admin/chat/end', {
             method: 'POST',

@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.redis import check_rate_limit
 from app.core.security import (
     create_access_token,
     decode_access_token,
@@ -156,6 +157,9 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ) -> LoginResponse:
     """Autentica admin o super admin y devuelve JWT con role + tenant_id."""
+    rate_key = f"login:{body.username}"
+    if await check_rate_limit(rate_key, limit=10, window=300):
+        raise HTTPException(status_code=429, detail="Demasiados intentos. Inténtalo en 5 minutos.")
     result = await db.execute(
         select(AdminUser).where(AdminUser.username == body.username)
     )

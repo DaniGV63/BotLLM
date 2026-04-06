@@ -4,7 +4,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -59,7 +61,12 @@ async def _safe_backup() -> None:
 async def lifespan(app: FastAPI):
     setup_logging()
     logger = structlog.get_logger()
-    logger.info("attendoo_started", version="1.5.0")
+    # 1.5 — Validación de arranque
+    if not settings.SECRET_KEY:
+        raise RuntimeError("SECRET_KEY no está configurada. Revisar .env")
+    if not settings.ENCRYPTION_KEY:
+        raise RuntimeError("ENCRYPTION_KEY no está configurada. Revisar .env")
+    logger.info("attendoo_started", version="1.7.0")
     asyncio.create_task(_safe_backup())
     yield
     await close_redis()
@@ -68,9 +75,27 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Attendoo",
-    version="1.5.0",
+    version="1.7.0",
     lifespan=lifespan,
 )
+
+# 1.3 — CORS
+_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
+if _origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+
+# 1.4 — Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    structlog.get_logger().error("unhandled_exception", path=str(request.url), exc_info=exc)
+    return JSONResponse(status_code=500, content={"detail": "Error interno del servidor"})
 
 
 app.include_router(webhook_router)
@@ -88,3 +113,10 @@ app.mount("/landing", StaticFiles(directory=str(BASE_DIR / "landing")), name="la
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+
+# 1.11 — robots.txt
+@app.get("/robots.txt", include_in_schema=False)
+async def robots_txt() -> PlainTextResponse:
+    content = (BASE_DIR / "static" / "robots.txt").read_text(encoding="utf-8")
+    return PlainTextResponse(content)

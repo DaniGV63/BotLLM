@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 
 # --- Auth ---
@@ -98,9 +98,16 @@ class TenantListResponse(BaseModel):
 
 class AdminUserCreate(BaseModel):
     username: str
-    password: str
+    password: str = Field(min_length=8)
     tenant_id: UUID  # requerido: solo se crean tenant_admin desde API
     email: str | None = None
+
+    @field_validator("password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("La contraseña debe tener al menos 8 caracteres")
+        return v
 
 
 class AdminUserRead(BaseModel):

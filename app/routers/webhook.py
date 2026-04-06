@@ -108,12 +108,12 @@ async def receive_webhook(
     elif settings.META_APP_SECRET:
         app_secret = settings.META_APP_SECRET
 
-    if app_secret and signature:
-        if not validate_meta_signature(raw_body, signature, app_secret):
-            log.warning("invalid_hmac_signature")
-            return {"status": "ok"}
-    elif not app_secret:
-        log.warning("no_app_secret_configured_skipping_hmac")
+    if not app_secret:
+        log.warning("no_app_secret_configured_rejecting")
+        return {"status": "ok"}
+    if signature and not validate_meta_signature(raw_body, signature, app_secret):
+        log.warning("invalid_hmac_signature")
+        return {"status": "ok"}
 
     # --- Bot inactivo: ignorar sin responder ---
     if not tenant.bot_activo:

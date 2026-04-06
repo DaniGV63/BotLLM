@@ -13,16 +13,21 @@ from app.models.admin_user import AdminRole, AdminUser
 from app.models.tenant import Tenant
 
 SUPER_ADMIN_USERNAME = os.environ.get("SUPER_ADMIN_USERNAME", "superadmin")
-SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "superadmin_temporal_2024")
+SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "")
 
-TENANT_ADMIN_USERNAME = os.environ.get("TENANT_ADMIN_USERNAME", "admin")
-TENANT_ADMIN_PASSWORD = os.environ.get("TENANT_ADMIN_PASSWORD", "admin_temporal_2024")
+TENANT_ADMIN_USERNAME = os.environ.get("TENANT_ADMIN_USERNAME", "demo")
+TENANT_ADMIN_PASSWORD = os.environ.get("TENANT_ADMIN_PASSWORD", "")
+
+if not SUPER_ADMIN_PASSWORD:
+    raise RuntimeError("SUPER_ADMIN_PASSWORD no está configurada. Exporta la variable antes de ejecutar seed.py")
+if not TENANT_ADMIN_PASSWORD:
+    raise RuntimeError("TENANT_ADMIN_PASSWORD no está configurada. Exporta la variable antes de ejecutar seed.py")
 
 PRIMER_TENANT = {
-    "slug": "fisio-cliente",
-    "nombre_negocio": "[COMPLETAR]",
-    "email_notificaciones": "[COMPLETAR]",
-    "whatsapp_phone_number_id": "1023364914199630",
+    "slug": "demo",
+    "nombre_negocio": "Clínica Demo Attendoo",
+    "email_notificaciones": os.environ.get("TENANT_EMAIL", "attendoo.app@gmail.com"),
+    "whatsapp_phone_number_id": os.environ.get("WA_PHONE_NUMBER_ID", ""),
     "whatsapp_verify_token": str(uuid.uuid4()),
     "bot_activo": True,
     "plan": "FREE_TRIAL",
@@ -48,7 +53,7 @@ async def seed() -> None:
 
         if not tenant.plan_expires_at:
             tenant.plan = "FREE_TRIAL"
-            tenant.plan_expires_at = datetime.now(timezone.utc) + timedelta(days=14)
+            tenant.plan_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
             await session.commit()
 
         # --- Super admin ---
@@ -86,9 +91,10 @@ async def seed() -> None:
             print(f"Tenant admin '{TENANT_ADMIN_USERNAME}' ya existe")
 
     print("\n--- Credenciales ---")
-    print(f"  Super admin:  {SUPER_ADMIN_USERNAME} / {SUPER_ADMIN_PASSWORD}")
-    print(f"  Tenant admin: {TENANT_ADMIN_USERNAME} / {TENANT_ADMIN_PASSWORD}")
-    print("  IMPORTANTE: Cambia las contraseñas por defecto en producción.\n")
+    print(f"  Super admin:  {SUPER_ADMIN_USERNAME} / (ver SUPER_ADMIN_PASSWORD)")
+    print(f"  Tenant admin: {TENANT_ADMIN_USERNAME} / (ver TENANT_ADMIN_PASSWORD)")
+    print(f"  Verify token: {PRIMER_TENANT['whatsapp_verify_token']}")
+    print("  Guarda el verify token — lo necesitarás al configurar el webhook en Meta.\n")
 
 
 if __name__ == "__main__":
