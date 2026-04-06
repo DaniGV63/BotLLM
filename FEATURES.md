@@ -129,9 +129,20 @@ Derivacion en tiempo real al fisioterapeuta.
 
 ---
 
+## Admin Calendar v1.6.0 — free+paid
+
+Vista unificada de agenda y configuración de horarios en el panel admin.
+
+| Key | Nombre | Status | Dif. | Prio. | Conv. | Estab. | Deps | Version |
+|-----|--------|--------|------|-------|-------|--------|------|---------|
+| `admin.work_blocks` | Configuración horario | implementada | M | alta | alto | beta | `admin.dashboard` | v1.6 |
+| `admin.calendar_view` | Vista calendario admin | implementada | M | alta | alto | beta | `admin.dashboard` | v1.6 |
+
+---
+
 ## Clases Grupales v1.5.0 — paid
 
-Clases recurrentes con capacidad.
+Clases recurrentes con capacidad. Gestionadas desde el tab Calendario (v1.6.1 — eliminado tab independiente; UI integrada en `admin-calendar-classes.js`).
 
 | Key | Nombre | Status | Dif. | Prio. | Conv. | Estab. | Deps | Version |
 |-----|--------|--------|------|-------|-------|--------|------|---------|
@@ -170,6 +181,7 @@ Features planificadas sin version asignada.
 | Admin (analiticas) | ❌ | ❌ | ✅ |
 | Handoff (v1.3) | ❌ | ❌ | ✅ |
 | Clases Grupales (v1.5) | ❌ | ❌ | ✅ |
+| Admin Calendar / Horarios (v1.6) | ❌ | ✅ | ✅ |
 | Recordatorios | ❌ | ❌ | ✅ |
 | Multi-idioma | ❌ | ❌ | ✅ |
 | Pagos | ❌ | ❌ | ✅ |

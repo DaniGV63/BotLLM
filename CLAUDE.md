@@ -59,7 +59,8 @@ Attendoo/
 │       ├── webhook.py              ← GET/POST webhook Meta
 │       ├── admin.py                ← panel admin (login, config, métricas)
 │       ├── admin_chat.py           ← WS chat handoff + REST derivaciones
-│       ├── admin_classes.py        ← CRUD clases grupales, sesiones, inscritos
+│       ├── admin_classes.py        ← CRUD clases grupales, sesiones, inscritos (API)
+│       ├── admin_calendar.py       ← eventos unificados + bloqueo + sesiones grupales
 │       ├── admin_features.py       ← endpoints features
 │       ├── superadmin.py           ← CRUD tenants, usuarios, onboarding status
 │       └── oauth.py                ← flujo OAuth2 Google Calendar/Gmail
@@ -67,7 +68,9 @@ Attendoo/
 │   ├── admin.html                  ← panel admin (template HTML)
 │   ├── admin.js                    ← lógica JS del panel admin
 │   ├── admin-chat.js               ← WebSocket client, chat UI derivaciones
-│   ├── admin-classes.js            ← UI gestión clases grupales
+│   ├── admin-calendar.js           ← FullCalendar v6: citas, clases, work_blocks
+│   ├── admin-calendar-classes.js   ← modal chooser + detalle sesión grupal
+│   ├── admin-superadmin.js         ← lógica UI superadmin
 │   └── attendoo.css                ← estilos compartidos
 ├── landing/
 │   └── index.html                  ← landing page comercial
@@ -151,7 +154,29 @@ LOG_LEVEL=INFO
 
 ## FASE ACTUAL
 
-→ **v1.5.0** — Sesiones grupales
+→ **v1.6.1** — Gestión clases desde calendario
+
+### Changelog v1.6.1
+- Gestión de clases grupales migrada al tab Calendario (eliminado tab independiente)
+- 3 nuevos endpoints en `admin_calendar`: `POST /create-class`, `GET /session/{id}`, `DELETE /session/{id}`
+- Modal chooser al pulsar hueco: bloquear horario o crear sesión grupal
+- Detalle de sesión con lista de inscritos, edición, cancelación e eliminación de serie
+- Validaciones inline en modal de creación de clase
+- Eliminado `static/admin-classes.js` (UI absorbida por `admin-calendar-classes.js`)
+- Permite seleccionar el día de hoy en el calendario
+
+### Changelog v1.6.0
+- Migración BD: `work_blocks` (JSONB) y `slot_duration_minutes` por tenant
+- `calendar_service`: slots dinámicos según `work_blocks` + `format_work_blocks_for_prompt`
+- `agent.py` + `llm_service`: inyección de horarios reales en contexto del LLM
+- `group_class_service`: validación clases grupales contra `work_blocks`
+- Nuevo router `admin_calendar.py`: `GET /events` (citas + clases + work_blocks) + `POST /block`
+- `superadmin`: `plan_expires_at` en lista tenants, parseo datetime, botón clear fecha
+- Features nuevas: `admin.work_blocks` y `admin.calendar_view` (FREE_TRIAL + PAID, beta)
+- `admin-superadmin.js` (nuevo): lógica superadmin extraída de `admin.js`
+- `admin-calendar.js` (nuevo): FullCalendar v6 — semana desde lunes, 24h, vista unificada
+- `admin.js`: editor horario semanal, duración cita, integración calendario
+- Superadmin UI: columna Plan + Baja, toggle expiración, features PENDING grises
 
 ### Changelog v1.5.0
 - Modelos BD: `GroupClassDefinition`, `GroupClassSession`, `GroupClassInscription` + migración

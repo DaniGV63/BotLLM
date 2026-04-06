@@ -1,12 +1,12 @@
 # Backlog — Attendoo
 
-Última actualización: 2026-04-04. Fuente de verdad para priorización de tareas.
+Última actualización: 2026-04-05. Fuente de verdad para priorización de tareas.
 
 ## Resumen
 
 **Deploy Hetzner fijado: 2026-04-04 al 2026-04-06** (paralelo, no bloquea desarrollo).
 **Plan v1.3.0 + v1.5.0 aprobado.** Detalle completo en `docs/PLAN_V1.3.0.md`.
-**Implementadas v1.2.2–v1.5.0:** #25, #16, #17, #26, #18. **Próximo:** Bloque B (bugs) o deploy Hetzner.
+**Implementadas v1.2.2–v1.6.1:** #25, #16, #17, #26, #18. **Próximo:** Bloque B (bugs) o deploy Hetzner.
 
 ---
 
@@ -34,6 +34,8 @@
 | Onboarding-status endpoint | v1.2.0 |
 | Rename BotLLM → Attendoo | v1.2.0 |
 | Ajustes landing page | v1.2.1 |
+| Horarios configurables (work_blocks), calendario FullCalendar admin, superadmin mejoras | v1.6.0 |
+| Gestión clases grupales migrada al calendario (modal chooser, detalle sesión) | v1.6.1 |
 
 ---
 
