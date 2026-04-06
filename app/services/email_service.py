@@ -50,7 +50,7 @@ async def send_notification_email(
 
     msg = MIMEText(body_text, "plain", "utf-8")
     msg["To"] = tenant.email_notificaciones
-    msg["Subject"] = "[Attendoo] Paciente solicita contacto"
+    msg["Subject"] = "[Atendoo] Paciente solicita contacto"
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
     gmail_service = await asyncio.to_thread(
@@ -108,7 +108,7 @@ async def send_cancellation_alert_email(
 
     msg = MIMEText(body_text, "plain", "utf-8")
     msg["To"] = tenant.email_notificaciones
-    msg["Subject"] = "[Attendoo] Cancelacion urgente <24h"
+    msg["Subject"] = "[Atendoo] Cancelacion urgente <24h"
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
     gmail_service = await asyncio.to_thread(
@@ -147,7 +147,7 @@ async def send_bot_status_email(tenant_id: uuid.UUID, activated: bool) -> None:
     )
     msg = MIMEText(body_text, "plain", "utf-8")
     msg["To"] = tenant.email_notificaciones
-    msg["Subject"] = f"[Attendoo] Bot {status}"
+    msg["Subject"] = f"[Atendoo] Bot {status}"
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
     gmail_service = await asyncio.to_thread(

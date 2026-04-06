@@ -2,7 +2,7 @@
 
 ## Contexto
 
-El bot Attendoo actualmente deriva conversaciones al fisio via email, sin posibilidad de respuesta dentro del sistema. Las sesiones grupales no están soportadas. Este plan aborda:
+El bot Atendoo actualmente deriva conversaciones al fisio via email, sin posibilidad de respuesta dentro del sistema. Las sesiones grupales no están soportadas. Este plan aborda:
 
 - **#16** Chat web en admin para que el fisio responda al paciente en tiempo real (WebSocket)
 - **#17** WA bridge: el fisio puede responder también desde su WhatsApp personal con prefijos N.
@@ -207,7 +207,7 @@ re.match(r"^(\d+)\.\s+(.+)", text)  → (numero, contenido)
 ### Template message para Meta
 Crear template aprobado por Meta para la notificación de derivación. El `motivo` es dinámico: lo genera el LLM describiendo por qué el paciente quiere hablar con el fisio. Contenido:
 ```
-[Attendoo] Paciente necesita atención
+[Atendoo] Paciente necesita atención
 Nombre: {{patient_name}}
 Motivo: {{motivo}}
 Resumen: {{last_messages_summary}}

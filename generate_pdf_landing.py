@@ -1,4 +1,4 @@
-"""Genera attendoo_comercial.pdf - one-pager comercial para reuniones con clientes."""
+"""Genera atendoo_comercial.pdf - one-pager comercial para reuniones con clientes."""
 
 from fpdf import FPDF, XPos, YPos
 
@@ -22,7 +22,7 @@ class PDF(FPDF):
         self.set_text_color(*MID_GRAY)
         self.cell(
             0, 5,
-            "Attendoo · Asistente de WhatsApp para clinicas · attendoo.es",
+            "Atendoo · Asistente de WhatsApp para clinicas · atendoo.app",
             align="C",
         )
 
@@ -48,7 +48,7 @@ def build_pdf() -> None:
     pdf.set_xy(14, 5)
     pdf.set_font("Helvetica", "B", 22)
     pdf.set_text_color(*WHITE)
-    pdf.cell_nl(W, 9, "Attendoo")
+    pdf.cell_nl(W, 9, "Atendoo")
 
     pdf.set_xy(14, 15)
     pdf.set_font("Helvetica", "", 11)
@@ -63,7 +63,7 @@ def build_pdf() -> None:
     pdf.set_y(41)
     pdf.set_font("Helvetica", "B", 12)
     pdf.set_text_color(*DARK_GRAY)
-    pdf.cell_nl(W, 6, "Por que Attendoo?", align="C")
+    pdf.cell_nl(W, 6, "Por que Atendoo?", align="C")
 
     cards = [
         ("Disponible 24/7",   "Los pacientes reservan a cualquier hora.\nTu duermes, el bot trabaja."),
@@ -211,7 +211,7 @@ def build_pdf() -> None:
     pdf.set_text_color(*DARK_GRAY)
     pdf.cell_nl(W, 6, "Comparativa rapida", align="C")
 
-    headers   = ["", "Attendoo", "Doctoralia", "Tidio"]
+    headers   = ["", "Atendoo", "Doctoralia", "Tidio"]
     col_ws    = [58, 34, 45, 45]
     rows = [
         ["WhatsApp nativo",          "Si",        "No",         "Extra"],
@@ -261,10 +261,10 @@ def build_pdf() -> None:
     pdf.set_xy(14, cta_y + 10)
     pdf.set_font("Helvetica", "", 8.5)
     pdf.set_text_color(190, 235, 215)
-    pdf.cell(W, 5, "attendoo.es  ·  hola@attendoo.es  ·  Instalacion en 48h", align="C")
+    pdf.cell(W, 5, "atendoo.app  ·  atendoo.app@gmail.com  ·  Instalacion en 48h", align="C")
 
-    pdf.output("attendoo_comercial.pdf")
-    print("PDF generado: attendoo_comercial.pdf")
+    pdf.output("atendoo_comercial.pdf")
+    print("PDF generado: atendoo_comercial.pdf")
 
 
 if __name__ == "__main__":

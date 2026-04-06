@@ -1,4 +1,4 @@
-# Backlog — Attendoo
+# Backlog — Atendoo
 
 Última actualización: 2026-04-05. Fuente de verdad para priorización de tareas.
 
@@ -32,7 +32,7 @@
 | Backup/restore multi-tenant | v1.2.0 |
 | Admin panel refactorizado (HTML+JS+CSS) | v1.2.0 |
 | Onboarding-status endpoint | v1.2.0 |
-| Rename BotLLM → Attendoo | v1.2.0 |
+| Rename BotLLM → Atendoo | v1.2.0 |
 | Ajustes landing page | v1.2.1 |
 | Horarios configurables (work_blocks), calendario FullCalendar admin, superadmin mejoras | v1.6.0 |
 | Gestión clases grupales migrada al calendario (modal chooser, detalle sesión) | v1.6.1 |

@@ -1,4 +1,4 @@
-# FEATURES.md — Attendoo Feature Registry
+# FEATURES.md — Atendoo Feature Registry
 
 Inventario completo de features del proyecto. Fuente de verdad para:
 - Tracking del estado de desarrollo

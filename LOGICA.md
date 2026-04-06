@@ -1,4 +1,4 @@
-# LOGICA.md — Lógica del LLM (Attendoo)
+# LOGICA.md — Lógica del LLM (Atendoo)
 
 Define las dos llamadas LLM, el formato de respuesta, prompts, safety net y manejo de errores.
 Referencia técnica para Claude Code al implementar `llm_client.py`, `llm_service.py` y `agent.py`.

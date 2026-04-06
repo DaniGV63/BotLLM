@@ -1,4 +1,4 @@
-# CLAUDE.md — Attendoo
+# CLAUDE.md — Atendoo
 
 Guía compacta para Claude Code. Leer ENTERO antes de tocar cualquier archivo.
 Para detalles: ver PLAN.md (fases, BD, Docker) y LOGICA.md (LLM, prompts, flujo).
@@ -31,7 +31,7 @@ FastAPI + PostgreSQL + Redis + OpenAI SDK (GPT-4o-mini) + Google GenAI SDK (Gemi
 ## ESTRUCTURA
 
 ```
-Attendoo/
+Atendoo/
 ├── CLAUDE.md, PLAN.md, LOGICA.md
 ├── prompts/
 │   ├── negocio.md                  ← datos del fisio (servicios, horarios, FAQ)
@@ -71,7 +71,7 @@ Attendoo/
 │   ├── admin-calendar.js           ← FullCalendar v6: citas, clases, work_blocks
 │   ├── admin-calendar-classes.js   ← modal chooser + detalle sesión grupal
 │   ├── admin-superadmin.js         ← lógica UI superadmin
-│   └── attendoo.css                ← estilos compartidos
+│   └── atendoo.css                ← estilos compartidos
 ├── landing/
 │   └── index.html                  ← landing page comercial
 ├── backup_tenant.py, restore_tenant.py  ← scripts CLI backup/restore
@@ -227,7 +227,7 @@ LOG_LEVEL=INFO
 - Backup/restore multi-tenant (automático al startup, CLI manual)
 - Admin panel refactorizado (HTML/JS/CSS separados)
 - Endpoint onboarding-status para checklist de configuración
-- Rename BotLLM → Attendoo en toda la codebase
+- Rename BotLLM → Atendoo en toda la codebase
 
 ## REFERENCIAS
 

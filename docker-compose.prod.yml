@@ -1,4 +1,4 @@
-name: attendoo-prod
+name: atendoo-prod
 
 services:
   app:

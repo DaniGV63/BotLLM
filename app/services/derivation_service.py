@@ -228,7 +228,7 @@ async def _notify_derivation(
 
     msg = MIMEText(body_text, "plain", "utf-8")
     msg["To"] = tenant.email_notificaciones
-    msg["Subject"] = f"[Attendoo] Paciente solicita atencion ({numero}.)"
+    msg["Subject"] = f"[Atendoo] Paciente solicita atencion ({numero}.)"
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
     gmail_service = await asyncio.to_thread(
@@ -268,7 +268,7 @@ async def _send_timeout_email(tenant: Tenant, conversation: Conversation) -> Non
 
     msg = MIMEText(body_text, "plain", "utf-8")
     msg["To"] = tenant.email_notificaciones
-    msg["Subject"] = "[Attendoo] Derivacion expirada por timeout"
+    msg["Subject"] = "[Atendoo] Derivacion expirada por timeout"
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
     gmail_service = await asyncio.to_thread(

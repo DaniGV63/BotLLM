@@ -25,8 +25,8 @@ if not TENANT_ADMIN_PASSWORD:
 
 PRIMER_TENANT = {
     "slug": "demo",
-    "nombre_negocio": "Clínica Demo Attendoo",
-    "email_notificaciones": os.environ.get("TENANT_EMAIL", "attendoo.app@gmail.com"),
+    "nombre_negocio": "Clínica Demo Atendoo",
+    "email_notificaciones": os.environ.get("TENANT_EMAIL", "atendoo.app@gmail.com"),
     "whatsapp_phone_number_id": os.environ.get("WA_PHONE_NUMBER_ID", ""),
     "whatsapp_verify_token": str(uuid.uuid4()),
     "bot_activo": True,

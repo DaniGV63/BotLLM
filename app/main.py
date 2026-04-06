@@ -66,15 +66,15 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("SECRET_KEY no está configurada. Revisar .env")
     if not settings.ENCRYPTION_KEY:
         raise RuntimeError("ENCRYPTION_KEY no está configurada. Revisar .env")
-    logger.info("attendoo_started", version="1.7.0")
+    logger.info("atendoo_started", version="1.7.0")
     asyncio.create_task(_safe_backup())
     yield
     await close_redis()
-    logger.info("attendoo_stopped")
+    logger.info("atendoo_stopped")
 
 
 app = FastAPI(
-    title="Attendoo",
+    title="Atendoo",
     version="1.7.0",
     lifespan=lifespan,
 )

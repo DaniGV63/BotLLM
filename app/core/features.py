@@ -1,4 +1,4 @@
-"""Sistema de feature flags y planes para Attendoo."""
+"""Sistema de feature flags y planes para Atendoo."""
 
 import enum
 import json

@@ -1,4 +1,4 @@
-# PLAN.md — Bot WhatsApp Fisioterapeuta (Attendoo)
+# PLAN.md — Bot WhatsApp Fisioterapeuta (Atendoo)
 
 Documento maestro. Fases con checklist, esquema BD, estructura de ficheros, convenciones.
 
@@ -31,7 +31,7 @@ solo clasifica y redacta — nunca decide disponibilidad ni ejecuta acciones.
 
 ## 2. ANTI-PATRONES A NO REPETIR (del proyecto Bot/)
 
-| # | Anti-patrón | Qué pasó | Solución en Attendoo |
+| # | Anti-patrón | Qué pasó | Solución en Atendoo |
 |---|---|---|---|
 | 1 | God file | agent.py creció a 1754 líneas, 18 handlers | Ningún archivo > 300 líneas. Separar en llm_client.py, llm_service.py, agent.py |
 | 2 | Interactivos + LLM | List Messages + Reply Buttons + LLM = 11 estados | LLM solo redacta texto. Sin mensajes interactivos |
@@ -164,7 +164,7 @@ pytest-asyncio
 ## 5. ESTRUCTURA DE FICHEROS
 
 ```
-Attendoo/
+Atendoo/
 ├── CLAUDE.md                          ← guía compacta para Claude Code
 ├── PLAN.md                            ← este archivo
 ├── LOGICA.md                          ← lógica LLM: prompts, flujo, respuestas
@@ -238,7 +238,7 @@ Attendoo/
 │   ├── admin-calendar.js              ← FullCalendar v6: citas, clases, work_blocks
 │   ├── admin-calendar-classes.js      ← modal chooser + detalle sesión grupal
 │   ├── admin-superadmin.js            ← lógica UI superadmin
-│   └── attendoo.css                   ← estilos compartidos
+│   └── atendoo.css                   ← estilos compartidos
 ├── landing/
 │   └── index.html                     ← landing page comercial
 ├── backup_tenant.py                   ← CLI: crear backup manual
@@ -796,7 +796,7 @@ Cada fase = tag en GitHub. No saltar fases.
 ### FASE 5 — Panel admin → `v1.1.0` ✅
 ```
 ✅ app/routers/admin.py + superadmin.py (2 niveles: SuperAdmin + TenantAdmin)
-✅ static/admin.html + admin.js + attendoo.css
+✅ static/admin.html + admin.js + atendoo.css
 ✅ JWT con roles, impersonación, CRUD tenants/usuarios
 ✅ Dashboard con métricas, auto-refresh
 ✅ git tag v1.1.0
@@ -819,7 +819,7 @@ Cada fase = tag en GitHub. No saltar fases.
 ✅ backup_tenant.py + restore_tenant.py — CLI
 ✅ GET /superadmin/tenants/{id}/onboarding-status — checklist config
 ✅ Refactor admin panel (HTML/JS/CSS separados)
-✅ Rename BotLLM → Attendoo en toda la codebase
+✅ Rename BotLLM → Atendoo en toda la codebase
 ✅ Landing page mejorada
 ✅ git tag v1.2.0
 ```

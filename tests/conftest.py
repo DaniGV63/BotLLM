@@ -1,4 +1,4 @@
-"""Fixtures compartidos para todos los tests de Attendoo v1.3.0."""
+"""Fixtures compartidos para todos los tests de Atendoo v1.3.0."""
 
 import sys
 import uuid

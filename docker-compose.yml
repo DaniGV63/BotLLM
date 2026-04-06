@@ -1,4 +1,4 @@
-name: attendoo
+name: atendoo
 
 services:
   db:
