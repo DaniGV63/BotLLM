@@ -52,7 +52,7 @@ async def google_oauth_start(
     redis = await get_redis()
     await redis.set(f"{_STATE_PREFIX}{state}", str(tenant_id), ex=_STATE_TTL)
 
-    redirect_uri = f"{settings.BASE_URL}/oauth/google/callback"
+    redirect_uri = f"{settings.BASE_URL}/oauth/callback"
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": redirect_uri,
@@ -67,7 +67,7 @@ async def google_oauth_start(
     return RedirectResponse(url=auth_url)
 
 
-@router.get("/google/callback", response_class=HTMLResponse)
+@router.get("/callback", response_class=HTMLResponse)
 async def google_oauth_callback(
     code: str,
     state: str,
@@ -94,7 +94,7 @@ async def google_oauth_callback(
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
 
     # Intercambiar code por tokens
-    redirect_uri = f"{settings.BASE_URL}/oauth/google/callback"
+    redirect_uri = f"{settings.BASE_URL}/oauth/callback"
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             _GOOGLE_TOKEN_URL,
