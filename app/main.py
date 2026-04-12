@@ -59,17 +59,29 @@ async def _safe_backup() -> None:
 
 
 async def _derivation_timeout_loop() -> None:
-    """Cada 5 minutos revisa timeouts de conversaciones DERIVADAS en todos los tenants."""
+    """Cada 5 minutos revisa timeouts de conversaciones DERIVADAS en todos los tenants.
+
+    Usa un lock Redis para garantizar que solo un worker lo ejecuta a la vez.
+    """
     from sqlalchemy import select
 
     from app.core.database import SessionLocal
+    from app.core.redis import get_redis
     from app.models.tenant import Tenant
     from app.services.derivation_service import check_derivation_timeout
+
+    _LOCK_KEY = "derivation_timeout_loop:lock"
+    _LOCK_TTL = 240  # 4 min — menor que el intervalo (5 min) para evitar deadlocks
 
     log = structlog.get_logger()
     while True:
         await asyncio.sleep(300)
         try:
+            redis = await get_redis()
+            acquired = await redis.set(_LOCK_KEY, "1", nx=True, ex=_LOCK_TTL)
+            if not acquired:
+                continue  # Otro worker ya está ejecutando el loop
+
             async with SessionLocal() as db:
                 result = await db.execute(select(Tenant.id))
                 tenant_ids = result.scalars().all()
