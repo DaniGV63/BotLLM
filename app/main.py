@@ -93,6 +93,43 @@ async def _derivation_timeout_loop() -> None:
             log.error("derivation_timeout_loop_error", exc_info=True)
 
 
+async def _inactivity_timeout_loop() -> None:
+    """Cada 30 minutos marca INACTIVAS las conversaciones ACTIVAS sin actividad >24h.
+
+    Usa un lock Redis para que solo un worker ejecute la tarea.
+    """
+    from app.core.database import SessionLocal
+    from app.core.redis import get_redis
+    from app.services.conversation import deactivate_expired_conversations
+    from app.services.websocket_manager import manager
+
+    _LOCK_KEY = "inactivity_timeout_loop:lock"
+    _LOCK_TTL = 1700  # 28 min — menor que el intervalo (30 min)
+
+    log = structlog.get_logger()
+    while True:
+        await asyncio.sleep(1800)
+        try:
+            redis = await get_redis()
+            acquired = await redis.set(_LOCK_KEY, "1", nx=True, ex=_LOCK_TTL)
+            if not acquired:
+                continue
+
+            async with SessionLocal() as db:
+                count = await deactivate_expired_conversations(db)
+
+            if count:
+                # Notificar a todos los tenants con conexión WS activa
+                try:
+                    for tid in list(manager._connections.keys()):
+                        await manager.broadcast_to_tenant(tid, {"type": "conversation_updated"})
+                except Exception:
+                    pass
+                log.info("inactivity_loop_done", deactivated=count)
+        except Exception:
+            log.error("inactivity_timeout_loop_error", exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
@@ -105,6 +142,7 @@ async def lifespan(app: FastAPI):
     logger.info("atendoo_started", version="1.7.0")
     asyncio.create_task(_safe_backup())
     asyncio.create_task(_derivation_timeout_loop())
+    asyncio.create_task(_inactivity_timeout_loop())
     yield
     await close_redis()
     logger.info("atendoo_stopped")

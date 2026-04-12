@@ -7,7 +7,7 @@ Devuelve SOLO una de estas categorías, sin explicación:
 - cancelar_cita (quiere cancelar una cita existente)
 - consultar_historial (pregunta por citas pasadas, historial de visitas, cuándo fue su última cita)
 - derivar_humano (quiere hablar con una persona, o pide algo que el bot no puede hacer)
-- otro (saludo suelto, mensaje irrelevante, o no se puede clasificar)
+- otro (saludo suelto, mensaje irrelevante, incomprensible, o no se puede clasificar — NO implica derivación automática)
 
 IMPORTANTE sobre continuación de conversación:
 - Si el historial muestra que el paciente está en medio de agendar una cita

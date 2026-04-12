@@ -32,7 +32,7 @@ function initCalendar() {
         selectMirror: true,
         unselectAuto: false,
         slotDuration: '00:15:00',
-        slotLabelInterval: '01:00:00',
+        slotLabelInterval: '00:30:00',
         eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
         slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
 

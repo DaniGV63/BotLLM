@@ -110,12 +110,15 @@ async def get_calendar_events(
             ev_end = ev.get("end", {}).get("dateTime")
             if not ev_start or not ev_end:
                 continue
+            # colorId "10" = clase grupal creada por Atendoo — ya se muestra desde PG
+            if ev.get("colorId") == "10":
+                continue
             phone = (
                 ev.get("extendedProperties", {})
                 .get("private", {})
                 .get("phone", "")
             )
-            is_blocked = not phone and "Bloqueado" in ev.get("summary", "")
+            is_blocked = ev.get("colorId") == "11" or (not phone and "Bloqueado" in ev.get("summary", ""))
             events.append({
                 "id": ev.get("id"),
                 "title": ev.get("summary", "Cita"),

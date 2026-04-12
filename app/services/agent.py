@@ -34,7 +34,12 @@ from app.services.conversation import (
     reactivate_conversation,
 )
 from app.services.email_service import send_cancellation_alert_email, send_notification_email
-from app.services.group_class_service import get_group_slots_for_bot, inscribe_patient
+from app.services.group_class_service import (
+    cancel_inscription,
+    get_group_slots_for_bot,
+    get_patient_upcoming_inscriptions,
+    inscribe_patient,
+)
 from app.services.llm_service import detect_intent, generate_response, load_prompt
 from app.services.whatsapp_service import send_text
 
@@ -259,11 +264,21 @@ async def handle_message(
             context["appointment"] = await get_appointment_by_phone(
                 tenant_id, wa_phone
             )
+            if features.get("groups.sessions", False):
+                context["group_inscriptions"] = await get_patient_upcoming_inscriptions(
+                    tenant_id, wa_phone, db
+                )
             if intent == "modificar_cita":
                 context["free_slots"] = await get_free_slots(tenant_id)
+                if features.get("groups.sessions", False):
+                    context["group_slots"] = await get_group_slots_for_bot(tenant_id, 7, db)
 
         elif intent == "consultar_historial":
             context["past_appointments"] = await get_past_appointments(tenant_id, wa_phone)
+            context["upcoming_appointments"] = await get_appointment_by_phone(tenant_id, wa_phone)
+            context["upcoming_group_inscriptions"] = await get_patient_upcoming_inscriptions(
+                tenant_id, wa_phone, db
+            )
 
         # 6. Generar respuesta (llamada 2 al LLM)
         try:
@@ -359,6 +374,20 @@ async def handle_message(
                                     else:
                                         action_executed = action_type
                                         log.info("group_inscription_done", session_id=session_id_str)
+                                elif action_type == "cancel" and action.get("is_group_class"):
+                                    session_id_str = action.get("session_id", "")
+                                    cancelled = await cancel_inscription(
+                                        tenant_id=tenant_id,
+                                        session_id=uuid.UUID(session_id_str),
+                                        wa_phone=wa_phone,
+                                        db=db,
+                                    )
+                                    if not cancelled:
+                                        reply_text = "No encontré tu inscripción en esa clase. Puede que ya estuviera cancelada."
+                                        execute = False
+                                    else:
+                                        action_executed = action_type
+                                        log.info("group_inscription_cancelled", session_id=session_id_str)
                                 else:
                                     await _execute_action(action, tenant_id, wa_phone)
                                     action_executed = action_type

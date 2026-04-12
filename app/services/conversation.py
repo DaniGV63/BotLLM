@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import structlog
 from sqlalchemy import delete, select
@@ -249,3 +250,27 @@ async def reactivate_conversation(
     await redis.delete(key)
 
     log.info("conversation_reactivated", conversation_id=str(conversation.id))
+
+
+async def deactivate_expired_conversations(db: AsyncSession) -> int:
+    """Marca como INACTIVA conversaciones ACTIVAS sin actividad en >24h.
+
+    Returns:
+        Número de conversaciones desactivadas.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    result = await db.execute(
+        select(Conversation).where(
+            Conversation.estado == ConversationState.ACTIVA.value,
+            Conversation.ultimo_mensaje_at < cutoff,
+        )
+    )
+    expired = result.scalars().all()
+    count = 0
+    for conv in expired:
+        await deactivate_conversation(conv, db)
+        count += 1
+    if count:
+        await db.commit()
+        logger.info("inactivity_timeout_batch", count=count)
+    return count

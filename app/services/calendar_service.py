@@ -424,3 +424,36 @@ async def cancel_appointment(
         return False
 
 
+async def update_group_calendar_attendees(
+    tenant_id: uuid.UUID,
+    event_id: str,
+    inscriptions: list[dict],
+) -> None:
+    """Actualiza la descripción del evento grupal en GCal con la lista de inscritos.
+
+    Args:
+        inscriptions: lista de dicts con keys 'nombre' y 'phone'.
+    """
+    log = logger.bind(tenant_id=str(tenant_id), event_id=event_id)
+    try:
+        creds, tenant = await get_google_creds(tenant_id)
+        calendar_id = tenant.google_calendar_id or "primary"
+        svc = await asyncio.to_thread(
+            build, "calendar", "v3", credentials=creds, cache_discovery=False
+        )
+        if inscriptions:
+            lines = [f"- {i.get('nombre') or 'Sin nombre'} ({i.get('phone', '')})" for i in inscriptions]
+            description = f"Inscritos ({len(inscriptions)}):\n" + "\n".join(lines)
+        else:
+            description = "Sin inscritos"
+        patch_body = {"description": description}
+        await asyncio.to_thread(
+            svc.events().patch(
+                calendarId=calendar_id, eventId=event_id, body=patch_body
+            ).execute
+        )
+        log.info("update_group_calendar_attendees_done", count=len(inscriptions))
+    except Exception as e:
+        log.warning("update_group_calendar_attendees_failed", error=str(e))
+
+

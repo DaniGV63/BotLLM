@@ -17,7 +17,10 @@ from app.models.group_class import (
     SessionState,
 )
 from app.models.tenant import Tenant
-from app.services.calendar_service import create_group_calendar_event, delete_group_calendar_event
+from app.services.calendar_service import (
+    create_group_calendar_event,
+    update_group_calendar_attendees,
+)
 from app.services.email_service import send_cancellation_alert_email
 
 logger = structlog.get_logger()
@@ -330,6 +333,16 @@ async def inscribe_patient(
     db.add(inscription)
     await db.flush()
     log.info("patient_inscribed", wa_phone=wa_phone)
+
+    # Actualizar descripción del evento GCal con la lista de inscritos
+    if session.google_event_id:
+        all_insc_result = await db.execute(
+            select(GroupClassInscription).where(GroupClassInscription.session_id == session_id)
+        )
+        all_insc = all_insc_result.scalars().all()
+        insc_list = [{"nombre": i.nombre_paciente, "phone": i.wa_phone} for i in all_insc]
+        await update_group_calendar_attendees(tenant_id, session.google_event_id, insc_list)
+
     return {"ok": True, "plazas_libres": definition.max_capacidad - inscritos - 1}
 
 
@@ -354,6 +367,7 @@ async def cancel_inscription(
         return False
 
     inscription, session = row
+    google_event_id = session.google_event_id
     await db.delete(inscription)
     await db.flush()
     logger.bind(tenant_id=str(tenant_id)).info("inscription_cancelled", wa_phone=wa_phone)
@@ -369,6 +383,16 @@ async def cancel_inscription(
             patient_phone=wa_phone,
             appointment_datetime=appointment_str,
         )
+
+    # Actualizar descripción del evento GCal con la lista de inscritos restantes
+    if google_event_id:
+        all_insc_result = await db.execute(
+            select(GroupClassInscription).where(GroupClassInscription.session_id == session_id)
+        )
+        all_insc = all_insc_result.scalars().all()
+        insc_list = [{"nombre": i.nombre_paciente, "phone": i.wa_phone} for i in all_insc]
+        await update_group_calendar_attendees(tenant_id, google_event_id, insc_list)
+
     return True
 
 
@@ -407,3 +431,39 @@ async def get_group_slots_for_bot(
         }
         for d, slots in sorted(by_date.items())
     ]
+
+
+async def get_patient_upcoming_inscriptions(
+    tenant_id: uuid.UUID,
+    wa_phone: str,
+    db: AsyncSession,
+) -> list[dict]:
+    """Devuelve las inscripciones futuras del paciente en clases grupales.
+
+    Returns:
+        [{"session_id": str, "nombre": str, "fecha": str, "hora": str}]
+    """
+    today = datetime.now(MADRID_TZ).date()
+    result = await db.execute(
+        select(GroupClassInscription, GroupClassSession, GroupClassDefinition)
+        .join(GroupClassSession, GroupClassInscription.session_id == GroupClassSession.id)
+        .join(GroupClassDefinition, GroupClassSession.definition_id == GroupClassDefinition.id)
+        .where(
+            GroupClassInscription.tenant_id == tenant_id,
+            GroupClassInscription.wa_phone == wa_phone,
+            GroupClassSession.estado == SessionState.PROGRAMADA.value,
+            GroupClassSession.fecha >= today,
+        )
+        .order_by(GroupClassSession.fecha, GroupClassSession.hora)
+    )
+    rows = result.all()
+    upcoming = []
+    for insc, session, definition in rows:
+        fecha_str = session.fecha if isinstance(session.fecha, str) else session.fecha.isoformat()
+        upcoming.append({
+            "session_id": str(session.id),
+            "nombre": definition.nombre,
+            "fecha": fecha_str,
+            "hora": session.hora,
+        })
+    return upcoming

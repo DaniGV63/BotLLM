@@ -80,6 +80,13 @@ function handleWsMessage(msg) {
                 !document.getElementById('tab-conversaciones').classList.contains('hidden')) {
                 if (typeof loadConversations === 'function') loadConversations(1);
             }
+            // Refresca el panel de mensajes abierto si coincide con la conv actualizada
+            if (typeof currentViewConvId !== 'undefined' && currentViewConvId &&
+                msg.conversation_id && msg.conversation_id === currentViewConvId) {
+                if (typeof viewMessages === 'function') {
+                    viewMessages(currentViewConvId, currentViewPhone, currentViewName);
+                }
+            }
             break;
         case 'calendar_event_changed':
             // Refresca el calendario si está activo
@@ -107,6 +114,7 @@ function onDerivationNew(msg) {
 function onPatientMessage(msg) {
     if (msg.conversation_id === activeChatConvId) {
         appendChatBubble('user', msg.content, msg.timestamp);
+        scrollChatToBottom();
     } else {
         // Resaltar en la lista
         const el = document.getElementById(`deriv-item-${msg.conversation_id}`);

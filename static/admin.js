@@ -6,6 +6,9 @@ let superAdminToken = sessionStorage.getItem('super_admin_token') || null;
 let botActivo = false;
 let convRefreshInterval = null;
 let dashboardRefreshInterval = null;
+let currentViewConvId = null;
+let currentViewPhone = null;
+let currentViewName = null;
 let tenantsCache = [];
 
 // ===== SECURITY: HTML ESCAPE =====
@@ -149,9 +152,12 @@ function showTab(name) {
     if (name === 'tenants') loadTenants();
     if (name === 'usuarios') loadUsers();
     if (name === 'configuracion') loadTenant();
-    // En móvil: cerrar sidebar al navegar
+    // En móvil: cerrar sidebar al navegar (remover también clases de posicionamiento)
     const sidebar = document.getElementById('sidebar');
-    if (sidebar && window.innerWidth < 768) sidebar.classList.add('hidden');
+    if (sidebar && window.innerWidth < 768) {
+        sidebar.classList.add('hidden');
+        sidebar.classList.remove('flex', 'fixed', 'inset-y-0', 'left-0', 'z-50');
+    }
 }
 
 // ===== TENANT DATA =====
@@ -250,6 +256,9 @@ async function loadConversations(page) {
     } catch (e) { showMsg('err', e.message); }
 }
 async function viewMessages(convId, phone, name) {
+    currentViewConvId = convId;
+    currentViewPhone = phone;
+    currentViewName = name;
     document.getElementById('msg-phone').textContent = name || phone;
     try {
         const data = await apiCall('GET', '/admin/conversations/' + convId + '/messages');
@@ -269,7 +278,12 @@ async function viewMessages(convId, phone, name) {
         if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (e) { showMsg('err', e.message); }
 }
-function closeMessages() { document.getElementById('messages-panel').classList.add('hidden'); }
+function closeMessages() {
+    document.getElementById('messages-panel').classList.add('hidden');
+    currentViewConvId = null;
+    currentViewPhone = null;
+    currentViewName = null;
+}
 
 // ===== METRICAS =====
 async function loadMetrics() {
