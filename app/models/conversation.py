@@ -31,6 +31,9 @@ class Conversation(Base):
         nullable=False,
         server_default=ConversationState.ACTIVA.value,
     )
+    derivation_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     ultimo_mensaje_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

@@ -70,6 +70,12 @@ class Tenant(Base):
     derivation_timeout_minutes: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="60"
     )
+    derivation_timeout_no_reply_minutes: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="480"
+    )
+    derivation_timeout_after_reply_minutes: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="120"
+    )
 
     # Limites operacionales
     rate_limit_per_minute: Mapped[int] = mapped_column(

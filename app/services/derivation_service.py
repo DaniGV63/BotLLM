@@ -46,8 +46,9 @@ async def derivate_conversation(
         conversation_id=str(conversation.id),
     )
 
-    # 1. Cambiar estado a DERIVADA
+    # 1. Cambiar estado a DERIVADA y registrar timestamp de inicio
     conversation.estado = ConversationState.DERIVADA.value
+    conversation.derivation_started_at = datetime.now(timezone.utc)
     await db.flush()
     log.info("conversation_derivated")
 
@@ -127,8 +128,12 @@ async def end_derivation(
         await redis.hdel(mappings_key, numero_to_remove)
         log.info("derivation_mapping_removed", prefix=numero_to_remove)
 
-    # 2. Restaurar estado ACTIVA
-    conversation.estado = ConversationState.ACTIVA.value
+    # 2. Restaurar estado: INACTIVA si timeout, ACTIVA si cierre manual
+    if reason == "timeout":
+        conversation.estado = ConversationState.INACTIVA.value
+    else:
+        conversation.estado = ConversationState.ACTIVA.value
+    conversation.derivation_started_at = None
     await db.flush()
     log.info("derivation_ended", reason=reason)
 
@@ -143,9 +148,15 @@ async def check_derivation_timeout(
 ) -> None:
     """Revisa conversaciones DERIVADAS y cierra las que superaron el timeout.
 
-    Llamado desde cada mensaje cuando hay estado DERIVADA.
+    Lógica dual:
+    - Si el fisio nunca respondió: timeout desde derivation_started_at
+      (derivation_timeout_no_reply_minutes, default 480 = 8h)
+    - Si el fisio ya respondió: timeout desde su último mensaje
+      (derivation_timeout_after_reply_minutes, default 120 = 2h)
     """
     from sqlalchemy import select
+
+    from app.models.message import Message
 
     result = await db.execute(
         select(Conversation).where(
@@ -162,14 +173,46 @@ async def check_derivation_timeout(
     if not tenant:
         return
 
-    timeout_minutes = tenant.derivation_timeout_minutes or 60
+    no_reply_timeout = tenant.derivation_timeout_no_reply_minutes or 480
+    after_reply_timeout = tenant.derivation_timeout_after_reply_minutes or 120
     now = datetime.now(timezone.utc)
 
     for conv in conversations:
-        last = conv.ultimo_mensaje_at
-        if last and last.tzinfo is None:
-            last = last.replace(tzinfo=timezone.utc)
-        if last and (now - last) > timedelta(minutes=timeout_minutes):
+        # Buscar último mensaje del fisio (role=assistant) desde que se derivó
+        started_at = conv.derivation_started_at
+        if started_at and started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=timezone.utc)
+
+        fisio_reply = None
+        if started_at:
+            msg_result = await db.execute(
+                select(Message)
+                .where(
+                    Message.conversation_id == conv.id,
+                    Message.role == "assistant",
+                    Message.created_at > started_at,
+                )
+                .order_by(Message.created_at.desc())
+                .limit(1)
+            )
+            fisio_reply = msg_result.scalar_one_or_none()
+
+        if fisio_reply:
+            # El fisio respondió — timeout desde su último mensaje
+            last = fisio_reply.created_at
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=timezone.utc)
+            elapsed = now - last
+            timeout_minutes = after_reply_timeout
+        else:
+            # El fisio nunca respondió — timeout desde inicio de derivación
+            reference = started_at or conv.ultimo_mensaje_at
+            if reference and reference.tzinfo is None:
+                reference = reference.replace(tzinfo=timezone.utc)
+            elapsed = now - reference if reference else timedelta(0)
+            timeout_minutes = no_reply_timeout
+
+        if elapsed > timedelta(minutes=timeout_minutes):
             await end_derivation(conv, tenant, "timeout", db)
             logger.info(
                 "derivation_timeout_ended",

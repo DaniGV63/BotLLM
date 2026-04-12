@@ -41,6 +41,8 @@ class TenantRead(BaseModel):
     feature_overrides: dict
     wa_personal_phone: str | None
     derivation_timeout_minutes: int
+    derivation_timeout_no_reply_minutes: int
+    derivation_timeout_after_reply_minutes: int
     work_blocks: dict
     slot_duration_minutes: int
 
@@ -64,6 +66,8 @@ class TenantUpdate(BaseModel):
     feature_overrides: dict | None = None
     wa_personal_phone: str | None = None
     derivation_timeout_minutes: int | None = None
+    derivation_timeout_no_reply_minutes: int | None = None
+    derivation_timeout_after_reply_minutes: int | None = None
 
 
 class TenantCreate(BaseModel):
