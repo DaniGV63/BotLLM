@@ -46,6 +46,8 @@
 | # | Tarea | Estado | Notas |
 |---|---|---|---|
 | 25 | **Crear FEATURES.md** | ⏳ Pendiente | Inventario de TODAS las features existentes + nuevas. Regla: registrar cada feature nueva al desarrollarla. Base para futuro sistema de pricing por tiers. |
+| 28 | **Acceso SSH con usuario `deploy` en lugar de `root`** | ⏳ Pendiente | Seguridad: crear usuario `deploy` en el VPS, añadir clave SSH, configurar sudoers mínimos. Actualizar toda la documentación y comandos SSH/SCP del proyecto para usar `deploy@46.225.215.129`. |
+| 29 | **Pipeline CI/CD con GitHub Actions** | ⏳ Pendiente | Al hacer `git push` a `deployment`, el código se despliega automáticamente en el VPS vía Docker Compose sin SSH manual. Pasos: secrets en GitHub (SSH key, IP), workflow `.github/workflows/deploy.yml` que haga `git pull` + `docker compose restart app` + `alembic upgrade head`. |
 
 ### Bloque A2 — Prioridad 2: Plan v1.3.0 + v1.5.0
 
