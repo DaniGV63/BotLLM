@@ -25,6 +25,7 @@ class Conversation(Base):
     )
     wa_phone: Mapped[str] = mapped_column(String(20), nullable=False)
     nombre_paciente: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    rgpd_accepted: Mapped[bool] = mapped_column(default=False, server_default="false")
     estado: Mapped[str] = mapped_column(
         String(20),
         nullable=False,

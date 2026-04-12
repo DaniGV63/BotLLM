@@ -161,3 +161,25 @@
   .no-print { display: none !important; }
   body { font-size: 12px; }
 }
+
+/* ===== Responsive admin panel ===== */
+@media (max-width: 767px) {
+  /* Main content: padding reducido en móvil */
+  main.flex-1 { padding: 1rem !important; }
+
+  /* Calendario: altura fija para no desbordar en pantallas pequeñas */
+  #fullcalendar-container .fc { font-size: 0.72rem; }
+  #fullcalendar-container .fc-toolbar { flex-direction: column; gap: 0.5rem; }
+
+  /* Tablas: scroll horizontal en contenedores de tabla */
+  #tab-tenants table,
+  #tab-usuarios table,
+  #tab-conversaciones table { display: block; overflow-x: auto; white-space: nowrap; }
+
+  /* Chat derivaciones: stack vertical en móvil */
+  #tab-chat > div { flex-direction: column !important; height: auto !important; }
+  #tab-chat .w-72 { width: 100% !important; max-height: 220px; }
+
+  /* Modals: ocupar ancho completo con margen mínimo */
+  .fixed.inset-0 > div { margin: 0.75rem !important; max-width: none !important; }
+}

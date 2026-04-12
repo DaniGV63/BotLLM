@@ -31,8 +31,7 @@ function initCalendar() {
         selectable: true,
         selectMirror: true,
         unselectAuto: false,
-        // 1h slots fuera de horario central, 30min dentro
-        slotDuration: '00:30:00',
+        slotDuration: '00:15:00',
         slotLabelInterval: '01:00:00',
         eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
         slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
@@ -76,6 +75,10 @@ function initCalendar() {
             if (props.type === 'group_class') {
                 var sessionId = info.event.id.replace('group_', '');
                 showSessionDetail(sessionId);
+                return;
+            }
+            if (props.type === 'blocked') {
+                showBlockEditModal(info.event);
                 return;
             }
         },
@@ -133,6 +136,69 @@ async function confirmBlockSlot() {
         closeBlockModal();
         if (calendarInstance) calendarInstance.refetchEvents();
         showMsg('ok', 'Horario bloqueado');
+    } catch (e) {
+        showMsg('err', e.message);
+    }
+}
+
+// ── Modal edición/borrado de bloqueos ─────────────────────────────────────
+
+var _editBlockEventId = null;
+var _editBlockEvent = null;
+
+function showBlockEditModal(event) {
+    _editBlockEventId = event.id;
+    _editBlockEvent = event;
+
+    var title = (event.title || '').replace(/^Bloqueado - ?/, '');
+    document.getElementById('block-edit-title').value = title;
+
+    // Mostrar rango horario en el modal
+    var fmt = { hour: '2-digit', minute: '2-digit', hour12: false };
+    var startStr = event.start ? event.start.toLocaleTimeString('es', fmt) : '';
+    var endStr = event.end ? event.end.toLocaleTimeString('es', fmt) : '';
+    var dateStr = event.start ? event.start.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
+    document.getElementById('block-edit-time').textContent = dateStr + (startStr ? ', ' + startStr + ' – ' + endStr : '');
+
+    document.getElementById('block-edit-modal').classList.remove('hidden');
+}
+
+function closeBlockEditModal() {
+    document.getElementById('block-edit-modal').classList.add('hidden');
+    _editBlockEventId = null;
+    _editBlockEvent = null;
+}
+
+async function confirmDeleteBlock() {
+    if (!_editBlockEventId) return;
+    try {
+        await apiCall('DELETE', '/admin/calendar/block/' + _editBlockEventId);
+        closeBlockEditModal();
+        if (calendarInstance) calendarInstance.refetchEvents();
+        showMsg('ok', 'Bloqueo eliminado');
+    } catch (e) {
+        showMsg('err', e.message);
+    }
+}
+
+async function confirmUpdateBlock() {
+    if (!_editBlockEventId || !_editBlockEvent) return;
+    var title = document.getElementById('block-edit-title').value.trim() || 'Bloqueado';
+    try {
+        var tzOffset = _editBlockEvent.start.getTimezoneOffset();
+        var sign = tzOffset <= 0 ? '+' : '-';
+        var absOff = Math.abs(tzOffset);
+        var offStr = sign + String(Math.floor(absOff / 60)).padStart(2, '0') + ':' + String(absOff % 60).padStart(2, '0');
+        var startISO = new Date(_editBlockEvent.start.getTime() - tzOffset * 60000).toISOString().slice(0, 19);
+        var endISO = new Date(_editBlockEvent.end.getTime() - tzOffset * 60000).toISOString().slice(0, 19);
+        await apiCall('PATCH', '/admin/calendar/block/' + _editBlockEventId, {
+            start: startISO + offStr,
+            end: endISO + offStr,
+            title: title,
+        });
+        closeBlockEditModal();
+        if (calendarInstance) calendarInstance.refetchEvents();
+        showMsg('ok', 'Bloqueo actualizado');
     } catch (e) {
         showMsg('err', e.message);
     }

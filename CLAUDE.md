@@ -154,7 +154,30 @@ LOG_LEVEL=INFO
 
 ## FASE ACTUAL
 
-→ **v1.6.1** — Gestión clases desde calendario
+→ **v1.7.1** — Gaps, estabilidad y UI/Admin
+
+### Changelog v1.7.1
+- `agent.py`: nombre del paciente actualizable en cualquier momento (eliminado guard `not conversation.nombre_paciente`)
+- `admin.html`: fix layout chat derivaciones (`hidden flex flex-col` en lugar de `hidden flex-col`)
+- `admin-chat.js`: formato teléfono con `formatPhone()` en lista y header de chat
+- `prompts/response_generation.md`: regla anti mensajes de espera + actualización de nombre + sección historial de citas
+- `prompts/intent_detection.md`: nuevo intent `consultar_historial`
+- `admin_calendar.py`: `colorId: "11"` en eventos de bloqueo
+- `agent.py` + `modificar_cita`: inyección de `free_slots` en el contexto del LLM
+- `conversation.py` modelo + migración Alembic `d4e5f6a1b2c3`: columna `rgpd_accepted` (RGPD persistido en PG)
+- `agent.py`: Crash recovery — persiste mensajes de error y deriva automáticamente en ambos bloques except
+- `main.py`: `_derivation_timeout_loop()` — background task cada 5 min para cerrar derivaciones por timeout
+- `calendar_service.py`: `get_past_appointments()` — historial citas pasadas desde Google Calendar
+- `agent.py`: intent `consultar_historial` → inyecta `past_appointments` en contexto
+- WS real-time: `conversation_updated` y `calendar_event_changed` broadcasts desde `agent.py` y `admin_calendar.py`
+- `admin-chat.js`: WS conecta en login (no solo al abrir tab chat), polling fallback reducido a 30s
+- `calendar_service.py`: `create_group_calendar_event()` + `delete_group_calendar_event()` (colorId 10 verde)
+- `group_class_service.py`: sync idempotente sesiones → Google Calendar al generarlas
+- `admin_classes.py` + `admin_calendar.py`: limpieza eventos GCal al cancelar/eliminar sesiones
+- `admin_calendar.py`: `DELETE /block/{event_id}` + `PATCH /block/{event_id}` — editar/borrar bloqueos
+- `admin-calendar.js`: click en bloqueos → modal editar/borrar; `slotDuration: '00:15:00'`
+- `admin.html`: modal editar bloqueo; `admin.js`: auto-cerrar sidebar en móvil
+- `atendoo.css`: media queries responsive para panel admin en móvil
 
 ### Changelog v1.6.1
 - Gestión de clases grupales migrada al tab Calendario (eliminado tab independiente)

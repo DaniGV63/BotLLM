@@ -408,7 +408,7 @@
                                     <p>Selecciona una derivacion para chatear</p>
                                 </div>
                             </div>
-                            <div id="chat-panel" class="hidden flex-col flex-1 overflow-hidden">
+                            <div id="chat-panel" class="hidden flex flex-col flex-1 overflow-hidden">
                                 <div class="p-4 border-b border-gray-100 flex items-center justify-between shrink-0">
                                     <div>
                                         <span id="chat-patient-name" class="font-semibold text-gray-900 text-sm"></span>
@@ -468,6 +468,29 @@
                                 class="px-4 py-2 text-sm rounded-lg border text-gray-600 hover:bg-gray-50">Cancelar</button>
                             <button onclick="confirmBlockSlot()"
                                 class="px-4 py-2 text-sm rounded-lg bg-gray-700 text-white hover:bg-gray-800">Bloquear</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal editar/borrar bloqueo -->
+                <div id="block-edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+                        <h3 class="font-semibold text-gray-900 mb-1">Editar bloqueo</h3>
+                        <p id="block-edit-time" class="text-sm text-gray-500 mb-3"></p>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Motivo</label>
+                            <input id="block-edit-title" type="text" class="w-full p-2 border rounded text-sm"
+                                placeholder="Ej: Emergencia, Vacaciones...">
+                        </div>
+                        <div class="flex justify-between gap-2">
+                            <button onclick="confirmDeleteBlock()"
+                                class="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700">Eliminar</button>
+                            <div class="flex gap-2">
+                                <button onclick="closeBlockEditModal()"
+                                    class="px-4 py-2 text-sm rounded-lg border text-gray-600 hover:bg-gray-50">Cancelar</button>
+                                <button onclick="confirmUpdateBlock()"
+                                    class="px-4 py-2 text-sm rounded-lg bg-gray-700 text-white hover:bg-gray-800">Guardar</button>
+                            </div>
                         </div>
                     </div>
                 </div>

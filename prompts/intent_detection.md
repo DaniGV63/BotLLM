@@ -5,6 +5,7 @@ Devuelve SOLO una de estas categorías, sin explicación:
 - agendar_cita (quiere reservar una cita nueva, o está en proceso de hacerlo)
 - modificar_cita (quiere cambiar fecha/hora de una cita que ya tiene)
 - cancelar_cita (quiere cancelar una cita existente)
+- consultar_historial (pregunta por citas pasadas, historial de visitas, cuándo fue su última cita)
 - derivar_humano (quiere hablar con una persona, o pide algo que el bot no puede hacer)
 - otro (saludo suelto, mensaje irrelevante, o no se puede clasificar)
 

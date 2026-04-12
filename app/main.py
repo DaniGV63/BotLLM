@@ -58,6 +58,29 @@ async def _safe_backup() -> None:
         structlog.get_logger().error("startup_backup_failed", exc_info=True)
 
 
+async def _derivation_timeout_loop() -> None:
+    """Cada 5 minutos revisa timeouts de conversaciones DERIVADAS en todos los tenants."""
+    from sqlalchemy import select
+
+    from app.core.database import SessionLocal
+    from app.models.tenant import Tenant
+    from app.services.derivation_service import check_derivation_timeout
+
+    log = structlog.get_logger()
+    while True:
+        await asyncio.sleep(300)
+        try:
+            async with SessionLocal() as db:
+                result = await db.execute(select(Tenant.id))
+                tenant_ids = result.scalars().all()
+            for tid in tenant_ids:
+                async with SessionLocal() as db:
+                    await check_derivation_timeout(tid, db)
+                    await db.commit()
+        except Exception:
+            log.error("derivation_timeout_loop_error", exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
@@ -69,6 +92,7 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("ENCRYPTION_KEY no está configurada. Revisar .env")
     logger.info("atendoo_started", version="1.7.0")
     asyncio.create_task(_safe_backup())
+    asyncio.create_task(_derivation_timeout_loop())
     yield
     await close_redis()
     logger.info("atendoo_stopped")

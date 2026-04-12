@@ -30,6 +30,7 @@ logs/
 *.swp
 *.swo
 .DS_Store
+.claude/
 
 # PDFs generados (binarios, no comitear)
 *.pdf

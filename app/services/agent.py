@@ -23,6 +23,7 @@ from app.services.calendar_service import (
     format_work_blocks_for_prompt,
     get_appointment_by_phone,
     get_free_slots,
+    get_past_appointments,
     modify_appointment,
 )
 from app.services.conversation import (
@@ -227,12 +228,15 @@ async def handle_message(
         if _t and getattr(_t, "work_blocks", None):
             business_hours = format_work_blocks_for_prompt(_t.work_blocks)
 
+        # RGPD: primera interaccion solo si no ha aceptado aun (persiste en PG)
+        es_primera_interaccion = not conversation.rgpd_accepted
+
         context: dict = {
             "business_info": load_prompt("negocio.md"),
             "business_hours": business_hours,
             "current_datetime": _format_datetime_es(_now_madrid()),
             "nombre_paciente": conversation.nombre_paciente,
-            "es_primera_interaccion": len(history) == 0,
+            "es_primera_interaccion": es_primera_interaccion,
         }
 
         if intent == "agendar_cita":
@@ -255,6 +259,11 @@ async def handle_message(
             context["appointment"] = await get_appointment_by_phone(
                 tenant_id, wa_phone
             )
+            if intent == "modificar_cita":
+                context["free_slots"] = await get_free_slots(tenant_id)
+
+        elif intent == "consultar_historial":
+            context["past_appointments"] = await get_past_appointments(tenant_id, wa_phone)
 
         # 6. Generar respuesta (llamada 2 al LLM)
         try:
@@ -264,18 +273,35 @@ async def handle_message(
         except Exception as e:
             log.error("generate_response_error", error=str(e))
             await send_text(tenant_id, wa_phone, FALLBACK_MSG, db)
-            await send_notification_email(
-                tenant_id, None, wa_phone, "Error tecnico LLM"
+            await append_message(
+                tenant_id=tenant_id, wa_phone=wa_phone, role="user",
+                content=message_text, db=db, conversation_id=conversation.id,
+                wa_message_id=wa_message_id,
             )
+            await append_message(
+                tenant_id=tenant_id, wa_phone=wa_phone, role="assistant",
+                content=FALLBACK_MSG, db=db, conversation_id=conversation.id,
+            )
+            _t_err = await db.get(Tenant, tenant_id)
+            from app.services.derivation_service import derivate_conversation
+            await derivate_conversation(
+                conversation=conversation, tenant=_t_err,
+                motivo="Error tecnico automatico", history=history, db=db,
+            )
+            await db.commit()
             return
 
         reply_text = response.get("message", FALLBACK_MSG)
 
         # 7. Guardar nombre si se detecto
         nombre = response.get("nombre_detectado")
-        if nombre and not conversation.nombre_paciente:
+        if nombre:
             conversation.nombre_paciente = nombre
             log.info("nombre_saved", nombre=nombre)
+
+        # 7b. Marcar RGPD como aceptado tras primer mensaje exitoso
+        if es_primera_interaccion and not conversation.rgpd_accepted:
+            conversation.rgpd_accepted = True
 
         # 8. Ejecutar accion si existe (con safety net)
         action = response.get("action")
@@ -414,6 +440,22 @@ async def handle_message(
         conversation.ultimo_mensaje_at = _now_madrid()
         await db.commit()
 
+        # 13. Broadcast WS → actualización en tiempo real del panel admin
+        try:
+            from app.services.websocket_manager import manager
+            await manager.broadcast_to_tenant(
+                str(tenant_id),
+                {
+                    "type": "conversation_updated",
+                    "conversation_id": str(conversation.id),
+                    "wa_phone": wa_phone,
+                    "intent": intent,
+                    "action": action_executed,
+                },
+            )
+        except Exception:
+            log.warning("ws_conversation_updated_failed")
+
         log.info(
             "message_handled",
             intent=intent,
@@ -425,8 +467,21 @@ async def handle_message(
         log.error("handle_message_error", error=str(e), exc_info=True)
         try:
             await send_text(tenant_id, wa_phone, FALLBACK_MSG, db)
-            await send_notification_email(
-                tenant_id, None, wa_phone, f"Error tecnico: {type(e).__name__}"
+            conv = await get_or_create_conversation(tenant_id, wa_phone, db)
+            await append_message(
+                tenant_id=tenant_id, wa_phone=wa_phone, role="user",
+                content=message_text, db=db, conversation_id=conv.id,
             )
+            await append_message(
+                tenant_id=tenant_id, wa_phone=wa_phone, role="assistant",
+                content=FALLBACK_MSG, db=db, conversation_id=conv.id,
+            )
+            _t_err = await db.get(Tenant, tenant_id)
+            from app.services.derivation_service import derivate_conversation
+            await derivate_conversation(
+                conversation=conv, tenant=_t_err,
+                motivo="Error tecnico automatico", history=[], db=db,
+            )
+            await db.commit()
         except Exception:
             log.error("fallback_send_failed", exc_info=True)

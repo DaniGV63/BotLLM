@@ -126,10 +126,27 @@ async def delete_class(
 ) -> None:
     if not await has_feature(tenant.id, _FEATURE, db):
         raise HTTPException(status_code=403, detail="Feature no disponible en tu plan")
+
+    # Recoger google_event_ids antes del CASCADE delete
+    from sqlalchemy import select as sa_select
+    from app.models.group_class import GroupClassSession
+    sess_result = await db.execute(
+        sa_select(GroupClassSession.google_event_id).where(
+            GroupClassSession.definition_id == class_id,
+            GroupClassSession.google_event_id.is_not(None),
+        )
+    )
+    gev_ids = [r for r in sess_result.scalars().all() if r]
+
     deleted = await delete_definition(tenant.id, class_id, db)
     if not deleted:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
     await db.commit()
+
+    if gev_ids:
+        from app.services.calendar_service import delete_group_calendar_event
+        for gev_id in gev_ids:
+            await delete_group_calendar_event(tenant.id, gev_id)
 
 
 # ---------------------------------------------------------------------------

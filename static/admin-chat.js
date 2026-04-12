@@ -74,6 +74,19 @@ function handleWsMessage(msg) {
         case 'derivation_ended':
             onDerivationEnded(msg);
             break;
+        case 'conversation_updated':
+            // Refresca la tab conversaciones si está activa
+            if (document.getElementById('tab-conversaciones') &&
+                !document.getElementById('tab-conversaciones').classList.contains('hidden')) {
+                if (typeof loadConversations === 'function') loadConversations(1);
+            }
+            break;
+        case 'calendar_event_changed':
+            // Refresca el calendario si está activo
+            if (typeof calendarInstance !== 'undefined' && calendarInstance) {
+                calendarInstance.refetchEvents();
+            }
+            break;
         case 'error':
             console.warn('[chat] WS error:', msg.detail);
             break;
@@ -156,7 +169,7 @@ function renderDerivationsList() {
         return `
             <div id="deriv-item-${convId}" class="p-3 cursor-pointer ${active} transition-colors" onclick="openChat('${convId}')">
                 <div class="font-medium text-gray-900 text-sm truncate">${escapeHtml(name)}</div>
-                <div class="text-gray-400 text-xs mt-0.5">${escapeHtml(phone)}</div>
+                <div class="text-gray-400 text-xs mt-0.5">${escapeHtml(formatPhone(phone))}</div>
             </div>
         `;
     }).join('');
@@ -182,7 +195,7 @@ async function openChat(convId) {
     activeChatConvId = convId;
     const d = derivationsMap[convId] || {};
     document.getElementById('chat-patient-name').textContent = d.patient_name || 'Desconocido';
-    document.getElementById('chat-patient-phone').textContent = d.wa_phone || '';
+    document.getElementById('chat-patient-phone').textContent = formatPhone(d.wa_phone) || '';
     document.getElementById('chat-empty').classList.add('hidden');
     document.getElementById('chat-panel').classList.remove('hidden');
     document.getElementById('chat-messages').innerHTML = '';

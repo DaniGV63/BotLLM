@@ -17,6 +17,7 @@ from app.models.group_class import (
     SessionState,
 )
 from app.models.tenant import Tenant
+from app.services.calendar_service import create_group_calendar_event, delete_group_calendar_event
 from app.services.email_service import send_cancellation_alert_email
 
 logger = structlog.get_logger()
@@ -195,10 +196,11 @@ async def generate_upcoming_sessions(
         day = today + timedelta(days=offset)
         if day.weekday() not in dias:
             continue
+        new_id = uuid.uuid4()
         stmt = (
             pg_insert(GroupClassSession)
             .values(
-                id=uuid.uuid4(),
+                id=new_id,
                 definition_id=definition_id,
                 tenant_id=tenant_id,
                 fecha=day,
@@ -208,6 +210,24 @@ async def generate_upcoming_sessions(
             .on_conflict_do_nothing(constraint="uq_session_definition_fecha")
         )
         await db.execute(stmt)
+        # Intentar obtener la sesión recién insertada (None si ya existía → idempotente)
+        sess_result = await db.execute(
+            select(GroupClassSession).where(
+                GroupClassSession.id == new_id,
+                GroupClassSession.google_event_id.is_(None),
+            )
+        )
+        session = sess_result.scalar_one_or_none()
+        if session:
+            h, m = map(int, definition.hora.split(":"))
+            dt_iso = datetime(
+                day.year, day.month, day.day, h, m, tzinfo=MADRID_TZ
+            ).isoformat()
+            gev_id = await create_group_calendar_event(
+                tenant_id, definition.nombre, dt_iso, definition.duracion_min
+            )
+            if gev_id:
+                session.google_event_id = gev_id
 
 
 async def get_available_sessions(

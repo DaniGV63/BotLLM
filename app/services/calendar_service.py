@@ -200,6 +200,114 @@ async def get_appointment_by_phone(
     return None
 
 
+async def create_group_calendar_event(
+    tenant_id: uuid.UUID,
+    session_name: str,
+    datetime_iso: str,
+    duration_minutes: int,
+) -> str | None:
+    """Crea evento de clase grupal en Google Calendar. Devuelve event_id o None si falla."""
+    log = logger.bind(tenant_id=str(tenant_id))
+    log.info("create_group_calendar_event_start", session_name=session_name)
+    try:
+        creds, tenant = await get_google_creds(tenant_id)
+        calendar_id = tenant.google_calendar_id or "primary"
+
+        start_dt = datetime.fromisoformat(datetime_iso)
+        if start_dt.tzinfo is None:
+            start_dt = start_dt.replace(tzinfo=MADRID_TZ)
+        end_dt = start_dt + timedelta(minutes=duration_minutes)
+
+        event_body = {
+            "summary": session_name,
+            "start": {"dateTime": start_dt.isoformat(), "timeZone": "Europe/Madrid"},
+            "end": {"dateTime": end_dt.isoformat(), "timeZone": "Europe/Madrid"},
+            "colorId": "10",  # Basil (verde oscuro)
+        }
+        svc = await asyncio.to_thread(
+            build, "calendar", "v3", credentials=creds, cache_discovery=False
+        )
+        event = await asyncio.to_thread(
+            svc.events().insert(calendarId=calendar_id, body=event_body).execute
+        )
+        log.info("create_group_calendar_event_done", event_id=event["id"])
+        return event["id"]
+    except Exception as e:
+        log.warning("create_group_calendar_event_failed", error=str(e))
+        return None
+
+
+async def delete_group_calendar_event(
+    tenant_id: uuid.UUID,
+    event_id: str,
+) -> None:
+    """Elimina evento de clase grupal de Google Calendar. Fallo silencioso."""
+    log = logger.bind(tenant_id=str(tenant_id))
+    try:
+        creds, tenant = await get_google_creds(tenant_id)
+        calendar_id = tenant.google_calendar_id or "primary"
+        svc = await asyncio.to_thread(
+            build, "calendar", "v3", credentials=creds, cache_discovery=False
+        )
+        await asyncio.to_thread(
+            svc.events().delete(calendarId=calendar_id, eventId=event_id).execute
+        )
+        log.info("delete_group_calendar_event_done", event_id=event_id)
+    except Exception as e:
+        log.warning("delete_group_calendar_event_failed", error=str(e))
+
+
+async def get_past_appointments(
+    tenant_id: uuid.UUID,
+    phone: str,
+    max_results: int = 5,
+) -> list[dict]:
+    """Devuelve las últimas citas pasadas del paciente, más recientes primero.
+
+    Returns:
+        [{"event_id": str, "datetime": str, "service": str, "client_name": str}]
+    """
+    log = logger.bind(tenant_id=str(tenant_id), wa_phone=phone)
+    log.info("get_past_appointments_start")
+
+    creds, tenant = await get_google_creds(tenant_id)
+    calendar_id = tenant.google_calendar_id or "primary"
+    now = datetime.now(MADRID_TZ)
+
+    svc = await asyncio.to_thread(
+        build, "calendar", "v3", credentials=creds, cache_discovery=False
+    )
+    events_result = await asyncio.to_thread(
+        svc.events().list(
+            calendarId=calendar_id,
+            timeMax=now.isoformat(),
+            q=phone,
+            singleEvents=True,
+            orderBy="startTime",
+            maxResults=50,
+        ).execute
+    )
+
+    matches = []
+    for event in events_result.get("items", []):
+        ext_phone = event.get("extendedProperties", {}).get("private", {}).get("phone", "")
+        description = event.get("description", "")
+        if phone in ext_phone or phone in description:
+            start_str = event.get("start", {}).get("dateTime", "")
+            parts = event.get("summary", "").split(" - ", 1)
+            matches.append({
+                "event_id": event["id"],
+                "datetime": start_str,
+                "service": parts[0] if parts else "",
+                "client_name": parts[1] if len(parts) > 1 else "",
+            })
+
+    # Más recientes primero
+    matches.sort(key=lambda x: x["datetime"], reverse=True)
+    log.info("get_past_appointments_done", found=len(matches))
+    return matches[:max_results]
+
+
 async def create_appointment(
     tenant_id: uuid.UUID,
     phone: str,

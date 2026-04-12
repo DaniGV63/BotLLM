@@ -117,6 +117,8 @@ async function showDashboard() {
         await loadTenants(); showTab('tenants');
     } else {
         await loadTenant(); showTab('configuracion');
+        // Conectar WS al login para recibir eventos en tiempo real desde cualquier tab
+        if (typeof initChat === 'function') initChat();
     }
 }
 function renderTabsForRole() {
@@ -140,13 +142,16 @@ function showTab(name) {
     });
     clearInterval(convRefreshInterval); convRefreshInterval = null;
     clearInterval(dashboardRefreshInterval); dashboardRefreshInterval = null;
-    if (name === 'conversaciones') { loadConversations(1); convRefreshInterval = setInterval(() => loadConversations(1), 10000); }
+    if (name === 'conversaciones') { loadConversations(1); convRefreshInterval = setInterval(() => loadConversations(1), 30000); }
     if (name === 'dashboard') { loadMetrics(); dashboardRefreshInterval = setInterval(() => loadMetrics(), 10000); if (typeof lucide !== 'undefined') lucide.createIcons(); }
     if (name === 'calendario') { if (typeof initCalendar === 'function') initCalendar(); }
     if (name === 'chat') { if (typeof initChat === 'function') initChat(); }
     if (name === 'tenants') loadTenants();
     if (name === 'usuarios') loadUsers();
     if (name === 'configuracion') loadTenant();
+    // En móvil: cerrar sidebar al navegar
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && window.innerWidth < 768) sidebar.classList.add('hidden');
 }
 
 // ===== TENANT DATA =====

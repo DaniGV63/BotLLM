@@ -44,6 +44,12 @@ class BlockRequest(BaseModel):
     title: str = "Bloqueado"
 
 
+class BlockPatchRequest(BaseModel):
+    start: str
+    end: str
+    title: str | None = None
+
+
 @router.get("/events")
 async def get_calendar_events(
     start: str = Query(..., description="YYYY-MM-DD"),
@@ -191,16 +197,95 @@ async def block_calendar_slot(
             "summary": f"Bloqueado - {body.title}",
             "start": {"dateTime": body.start, "timeZone": "Europe/Madrid"},
             "end": {"dateTime": body.end, "timeZone": "Europe/Madrid"},
+            "colorId": "11",
         }
         event = await asyncio.to_thread(
             svc.events().insert(
                 calendarId=calendar_id, body=event_body,
             ).execute
         )
-        return {"ok": True, "event_id": event.get("id")}
+        result = {"ok": True, "event_id": event.get("id")}
+        try:
+            from app.services.websocket_manager import manager
+            await manager.broadcast_to_tenant(
+                str(tenant.id), {"type": "calendar_event_changed"}
+            )
+        except Exception:
+            pass
+        return result
     except Exception as e:
         logger.error("block_slot_error", error=str(e))
         raise HTTPException(status_code=500, detail="Error al bloquear horario")
+
+
+@router.delete("/block/{event_id}", status_code=204)
+async def delete_block(
+    event_id: str,
+    tenant: Tenant = Depends(require_tenant_scope),
+    _user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    if not await has_feature(tenant.id, _FEATURE, db):
+        raise HTTPException(status_code=403, detail="Feature no disponible")
+    try:
+        creds, _ = await get_google_creds(tenant.id)
+        calendar_id = tenant.google_calendar_id or "primary"
+        svc = await asyncio.to_thread(
+            build, "calendar", "v3", credentials=creds, cache_discovery=False
+        )
+        await asyncio.to_thread(
+            svc.events().delete(calendarId=calendar_id, eventId=event_id).execute
+        )
+    except Exception as e:
+        logger.error("delete_block_error", error=str(e))
+        raise HTTPException(status_code=500, detail="Error al borrar el bloqueo")
+    try:
+        from app.services.websocket_manager import manager
+        await manager.broadcast_to_tenant(
+            str(tenant.id), {"type": "calendar_event_changed"}
+        )
+    except Exception:
+        pass
+
+
+@router.patch("/block/{event_id}")
+async def update_block(
+    event_id: str,
+    body: BlockPatchRequest,
+    tenant: Tenant = Depends(require_tenant_scope),
+    _user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    if not await has_feature(tenant.id, _FEATURE, db):
+        raise HTTPException(status_code=403, detail="Feature no disponible")
+    try:
+        creds, _ = await get_google_creds(tenant.id)
+        calendar_id = tenant.google_calendar_id or "primary"
+        svc = await asyncio.to_thread(
+            build, "calendar", "v3", credentials=creds, cache_discovery=False
+        )
+        patch_body: dict = {
+            "start": {"dateTime": body.start, "timeZone": "Europe/Madrid"},
+            "end": {"dateTime": body.end, "timeZone": "Europe/Madrid"},
+        }
+        if body.title is not None:
+            patch_body["summary"] = f"Bloqueado - {body.title}"
+        event = await asyncio.to_thread(
+            svc.events().patch(
+                calendarId=calendar_id, eventId=event_id, body=patch_body,
+            ).execute
+        )
+    except Exception as e:
+        logger.error("update_block_error", error=str(e))
+        raise HTTPException(status_code=500, detail="Error al actualizar el bloqueo")
+    try:
+        from app.services.websocket_manager import manager
+        await manager.broadcast_to_tenant(
+            str(tenant.id), {"type": "calendar_event_changed"}
+        )
+    except Exception:
+        pass
+    return {"ok": True, "event_id": event.get("id")}
 
 
 _FEATURE_GROUPS = "groups.templates"
@@ -358,6 +443,17 @@ async def cancel_session(
     if not session:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
 
+    google_event_id = session.google_event_id
     session.estado = SessionState.CANCELADA.value
     await db.commit()
+    if google_event_id:
+        from app.services.calendar_service import delete_group_calendar_event
+        await delete_group_calendar_event(tenant.id, google_event_id)
+    try:
+        from app.services.websocket_manager import manager
+        await manager.broadcast_to_tenant(
+            str(tenant.id), {"type": "calendar_event_changed"}
+        )
+    except Exception:
+        pass
     return {"ok": True}
