@@ -135,7 +135,7 @@ class TestDerivationLifecycle:
         with patch("app.services.derivation_service._send_timeout_email", AsyncMock()) as mock_email:
             await end_derivation(conv, tenant, "timeout", db_mock)
 
-        assert conv.estado == ConversationState.ACTIVA.value
+        assert conv.estado == ConversationState.INACTIVA.value
         mock_email.assert_called_once_with(tenant, conv)
 
 

@@ -343,23 +343,26 @@ async def create_class_from_calendar(
     if body.recurrente:
         if not body.dias_semana:
             raise HTTPException(status_code=400, detail="Selecciona al menos un día para sesión recurrente")
-        try:
-            definition = await create_definition(
-                tenant.id, body.nombre, body.dias_semana, body.hora,
-                body.duracion_min, body.max_capacidad, db,
-            )
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+        work_warning = _validate_against_work_blocks(
+            tenant.work_blocks, body.dias_semana, body.hora, body.duracion_min,
+        )
+        definition = await create_definition(
+            tenant.id, body.nombre, body.dias_semana, body.hora,
+            body.duracion_min, body.max_capacidad, db,
+        )
         await generate_upcoming_sessions(tenant.id, definition.id, 30, db)
         await db.commit()
-        return {"ok": True, "definition_id": str(definition.id), "recurrente": True}
+        return {
+            "ok": True,
+            "definition_id": str(definition.id),
+            "recurrente": True,
+            "warning": work_warning,
+        }
     else:
         dias_semana = [fecha.weekday()]
-        err = _validate_against_work_blocks(
+        work_warning = _validate_against_work_blocks(
             tenant.work_blocks, dias_semana, body.hora, body.duracion_min,
         )
-        if err:
-            raise HTTPException(status_code=400, detail=err)
 
         definition = GroupClassDefinition(
             tenant_id=tenant.id,
@@ -383,7 +386,12 @@ async def create_class_from_calendar(
         )
         db.add(session)
         await db.commit()
-        return {"ok": True, "definition_id": str(definition.id), "recurrente": False}
+        return {
+            "ok": True,
+            "definition_id": str(definition.id),
+            "recurrente": False,
+            "warning": work_warning,
+        }
 
 
 @router.get("/session/{session_id}")

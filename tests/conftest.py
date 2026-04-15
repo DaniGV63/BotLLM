@@ -49,6 +49,8 @@ def tenant_factory():
         t.feature_overrides = {}
         t.wa_personal_phone = wa_personal_phone
         t.derivation_timeout_minutes = timeout_minutes
+        t.derivation_timeout_no_reply_minutes = 480
+        t.derivation_timeout_after_reply_minutes = 120
         t.email_notificaciones = "fisio@clinica.test"
         t.whatsapp_phone_number_id = "1234567890"
         t.whatsapp_token = None
@@ -74,6 +76,7 @@ def conversation_factory():
         c.nombre_paciente = nombre
         c.estado = estado
         c.ultimo_mensaje_at = datetime.now(timezone.utc)
+        c.derivation_started_at = None
         return c
 
     return _make

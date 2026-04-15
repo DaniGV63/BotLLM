@@ -218,14 +218,18 @@ class TestCheckDerivationTimeout:
         self, tenant_factory, conversation_factory, db_mock
     ):
         tenant = tenant_factory(timeout_minutes=60)
-        # Conversación con último mensaje hace 90 minutos
+        # no_reply_timeout a 60 min para que 90 min expire
+        tenant.derivation_timeout_no_reply_minutes = 60
+        # Conversación derivada hace 90 minutos sin respuesta del fisio
         conv = conversation_factory(estado=ConversationState.DERIVADA.value)
         conv.tenant_id = tenant.id
+        conv.derivation_started_at = datetime.now(timezone.utc) - timedelta(minutes=90)
         conv.ultimo_mensaje_at = datetime.now(timezone.utc) - timedelta(minutes=90)
 
         conv_result = make_db_result(rows=[conv])
         tenant_result = make_db_result(scalar=tenant)
-        db_mock.execute = AsyncMock(side_effect=[conv_result, tenant_result])
+        msg_result = make_db_result(scalar=None)  # sin respuesta del fisio
+        db_mock.execute = AsyncMock(side_effect=[conv_result, tenant_result, msg_result])
         db_mock.get = AsyncMock(return_value=tenant)
 
         with patch("app.services.derivation_service.end_derivation", AsyncMock()) as mock_end:
@@ -239,13 +243,16 @@ class TestCheckDerivationTimeout:
         self, tenant_factory, conversation_factory, db_mock
     ):
         tenant = tenant_factory(timeout_minutes=60)
+        tenant.derivation_timeout_no_reply_minutes = 60
         conv = conversation_factory(estado=ConversationState.DERIVADA.value)
         conv.tenant_id = tenant.id
+        conv.derivation_started_at = datetime.now(timezone.utc) - timedelta(minutes=10)
         conv.ultimo_mensaje_at = datetime.now(timezone.utc) - timedelta(minutes=10)
 
         conv_result = make_db_result(rows=[conv])
         tenant_result = make_db_result(scalar=tenant)
-        db_mock.execute = AsyncMock(side_effect=[conv_result, tenant_result])
+        msg_result = make_db_result(scalar=None)  # sin respuesta del fisio
+        db_mock.execute = AsyncMock(side_effect=[conv_result, tenant_result, msg_result])
 
         with patch("app.services.derivation_service.end_derivation", AsyncMock()) as mock_end:
             await check_derivation_timeout(tenant.id, db_mock)

@@ -6,6 +6,22 @@ var _currentSessionData = null;
 
 const _DAY_NAMES_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
+function showClassWarning(text) {
+    var existing = document.getElementById('class-warning-toast');
+    if (existing) existing.remove();
+    var toast = document.createElement('div');
+    toast.id = 'class-warning-toast';
+    toast.style.cssText = 'position:fixed;top:1.25rem;left:50%;transform:translateX(-50%);z-index:9999;max-width:36rem;width:90%;background:#fef3c7;border:1px solid #f59e0b;border-radius:0.75rem;padding:1rem 1.25rem;box-shadow:0 4px 16px rgba(0,0,0,0.12);display:flex;gap:0.75rem;align-items:flex-start;';
+    toast.innerHTML = '<span style="font-size:1.25rem;line-height:1;">⚠️</span>'
+        + '<div style="flex:1;font-size:0.875rem;color:#92400e;line-height:1.4;">'
+        + '<strong style="display:block;margin-bottom:0.25rem;">Clase creada con aviso</strong>'
+        + _escHtml(text)
+        + '</div>'
+        + '<button onclick="document.getElementById(\'class-warning-toast\').remove()" '
+        + 'style="background:none;border:none;cursor:pointer;font-size:1rem;color:#92400e;padding:0;line-height:1;" title="Cerrar">✕</button>';
+    document.body.appendChild(toast);
+}
+
 function _escHtml(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -134,7 +150,7 @@ async function confirmCalClass() {
     }
 
     try {
-        await apiCall('POST', '/admin/calendar/create-class', {
+        var res = await apiCall('POST', '/admin/calendar/create-class', {
             nombre: nombre,
             fecha: fecha,
             hora: hora,
@@ -145,7 +161,11 @@ async function confirmCalClass() {
         });
         closeCalClassModal();
         if (calendarInstance) calendarInstance.refetchEvents();
-        showMsg('ok', recurrente ? 'Sesión recurrente creada' : 'Sesión grupal creada');
+        if (res && res.warning) {
+            showClassWarning(res.warning);
+        } else {
+            showMsg('ok', recurrente ? 'Sesión recurrente creada' : 'Sesión grupal creada');
+        }
     } catch (e) {
         showMsg('err', e.message);
     }

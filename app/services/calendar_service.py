@@ -328,9 +328,10 @@ async def create_appointment(
         start_dt = start_dt.replace(tzinfo=MADRID_TZ)
     end_dt = start_dt + timedelta(minutes=duration_minutes)
 
+    display_name = client_name if client_name and client_name.strip() else phone
     event_body = {
-        "summary": f"{service} - {client_name}",
-        "description": f"Paciente: {client_name}\nTelefono: {phone}",
+        "summary": f"{service} - {display_name}",
+        "description": f"Paciente: {display_name}\nTelefono: {phone}",
         "start": {"dateTime": start_dt.isoformat(), "timeZone": "Europe/Madrid"},
         "end": {"dateTime": end_dt.isoformat(), "timeZone": "Europe/Madrid"},
         "extendedProperties": {"private": {"phone": phone}},

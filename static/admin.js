@@ -119,7 +119,14 @@ async function showDashboard() {
         badge.textContent = 'Super Admin'; badge.className = 'text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700'; badge.classList.remove('hidden');
         await loadTenants(); showTab('tenants');
     } else {
-        await loadTenant(); showTab('configuracion');
+        await loadTenant();
+        const savedTab = localStorage.getItem('atendoo_active_tab');
+        const validTabs = ALL_TABS.filter(t => {
+            const btn = document.getElementById('tab-btn-' + t);
+            return btn && !btn.classList.contains('hidden');
+        });
+        const initialTab = savedTab && validTabs.includes(savedTab) ? savedTab : 'configuracion';
+        showTab(initialTab);
         // Conectar WS al login para recibir eventos en tiempo real desde cualquier tab
         if (typeof initChat === 'function') initChat();
     }
@@ -135,6 +142,7 @@ function renderTabsForRole() {
 }
 const ALL_TABS = ['tenants','usuarios','configuracion','google','conversaciones','calendario','chat','dashboard'];
 function showTab(name) {
+    localStorage.setItem('atendoo_active_tab', name);
     ALL_TABS.forEach(t => {
         document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
         const btn = document.getElementById('tab-btn-' + t);
@@ -163,6 +171,7 @@ function showTab(name) {
 // ===== TENANT DATA =====
 async function loadTenant() {
     const t = await apiCall('GET', '/admin/tenant');
+    window.currentTenant = t;
     document.getElementById('nav-nombre').textContent = t.nombre_negocio;
     const planBadge = document.getElementById('nav-plan-badge');
     const planMap = { 'PAID': { text: 'PAID', cls: 'bg-green-900/50 text-green-300' }, 'FREE_TRIAL': { text: 'Free Trial', cls: 'bg-yellow-900/50 text-yellow-300' }, 'SIN_PLAN': { text: 'Sin plan', cls: 'bg-gray-700 text-gray-400' } };
@@ -233,7 +242,8 @@ async function loadConversations(page) {
             tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">Sin conversaciones</td></tr>';
         } else {
             tbody.innerHTML = data.conversations.map(function(c) {
-                const b = c.estado === 'ACTIVA' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500';
+                const estadoCls = { 'ACTIVA': 'bg-green-100 text-green-700', 'DERIVADA': 'bg-orange-100 text-orange-700', 'INACTIVA': 'bg-gray-100 text-gray-500' };
+                const b = estadoCls[c.estado] || 'bg-gray-100 text-gray-500';
                 const escId = escapeHtml(c.id);
                 const escPhone = escapeHtml(formatPhone(c.wa_phone));
                 const escName = escapeHtml(c.nombre_paciente || '');
@@ -275,8 +285,33 @@ async function viewMessages(convId, phone, name) {
         }).join('');
         document.getElementById('messages-panel').classList.remove('hidden');
         list.scrollTop = list.scrollHeight;
+        setTimeout(function() { list.scrollTop = list.scrollHeight; }, 50);
         if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (e) { showMsg('err', e.message); }
+    _loadConvAppointments(convId);
+}
+async function _loadConvAppointments(convId) {
+    var card = document.getElementById('conv-appointments-card');
+    if (!card) return;
+    card.innerHTML = '<p class="text-xs text-gray-400">Cargando citas...</p>';
+    try {
+        var data = await apiCall('GET', '/admin/conversations/' + convId + '/appointments');
+        var items = [];
+        (data.individual || []).forEach(function(a) {
+            var dt = a.datetime ? new Date(a.datetime).toLocaleString('es-ES', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+            items.push('<li class="text-xs text-gray-700">• ' + escapeHtml(a.service || 'Cita') + ' — ' + dt + '</li>');
+        });
+        (data.group || []).forEach(function(g) {
+            items.push('<li class="text-xs text-gray-700">• ' + escapeHtml(g.nombre) + ' grupal — ' + escapeHtml(g.fecha) + ' ' + escapeHtml(g.hora) + '</li>');
+        });
+        if (items.length === 0) {
+            card.innerHTML = '<p class="text-xs text-gray-400">Sin próximas citas.</p>';
+        } else {
+            card.innerHTML = '<p class="text-xs font-medium text-gray-600 mb-1">Próximas citas</p><ul class="space-y-0.5">' + items.join('') + '</ul>';
+        }
+    } catch (_) {
+        card.innerHTML = '<p class="text-xs text-gray-400">No se pudieron cargar las citas.</p>';
+    }
 }
 function closeMessages() {
     document.getElementById('messages-panel').classList.add('hidden');

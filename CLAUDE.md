@@ -157,6 +157,7 @@ LOG_LEVEL=INFO
 - Producción utiliza docker-compose.prod.yml (NO el docker-compose.yml por defecto)
 - La terminal es PowerShell en Windows - NO uses continuaciones de línea con barra invertida ni secuencias de escape al estilo bash
 - Comprueba siempre los nombres reales de los servicios en el archivo compose antes de ejecutar comandos de Docker
+- **URLs públicas sin extensión ni /static/** — `/`=landing, `/admin`=panel, `/privacy`=política. Nuevas páginas: route `FileResponse` en `app/main.py` antes de los `app.mount`. Ver `project_url_conventions.md`.
 
 ## Git y Versionado
 - Al etiquetar una versión (release), usa etiquetas anotadas (git tag -a) que cubran TODOS los commits relevantes, no solo el último

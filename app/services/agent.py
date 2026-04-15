@@ -483,6 +483,11 @@ async def handle_message(
                     "nombre_updated": bool(nombre),
                 },
             )
+            if action_executed in ("create", "modify", "cancel"):
+                await manager.broadcast_to_tenant(
+                    str(tenant_id),
+                    {"type": "calendar_event_changed"},
+                )
         except Exception:
             log.warning("ws_conversation_updated_failed")
 

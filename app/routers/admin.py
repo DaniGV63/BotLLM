@@ -354,6 +354,43 @@ async def get_conversation_messages(
     )
 
 
+@router.get("/conversations/{conversation_id}/appointments")
+async def get_conversation_appointments(
+    conversation_id: UUID,
+    tenant: Tenant = Depends(require_tenant_scope),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Próximas citas individuales y grupales del paciente de una conversación."""
+    result = await db.execute(
+        select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.tenant_id == tenant.id,
+        )
+    )
+    conversation = result.scalar_one_or_none()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversación no encontrada")
+
+    individual: list[dict] = []
+    group: list[dict] = []
+
+    try:
+        from app.services.calendar_service import get_appointment_by_phone
+        appt = await get_appointment_by_phone(tenant.id, conversation.wa_phone)
+        if appt:
+            individual.append(appt)
+    except Exception:
+        pass
+
+    try:
+        from app.services.group_class_service import get_patient_upcoming_inscriptions
+        group = await get_patient_upcoming_inscriptions(tenant.id, conversation.wa_phone, db)
+    except Exception:
+        pass
+
+    return {"individual": individual, "group": group}
+
+
 @router.get("/metrics", response_model=MetricsResponse)
 async def get_metrics(
     tenant: Tenant = Depends(require_tenant_scope),

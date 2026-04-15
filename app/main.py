@@ -6,7 +6,7 @@ from pathlib import Path
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.staticfiles import StaticFiles
 
@@ -194,6 +194,26 @@ app.include_router(superadmin_router)
 app.include_router(oauth_router)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 app.mount("/landing", StaticFiles(directory=str(BASE_DIR / "landing")), name="landing")
+
+
+@app.get("/", include_in_schema=False)
+async def landing():
+    return FileResponse(str(BASE_DIR / "landing" / "index.html"))
+
+
+@app.get("/admin", include_in_schema=False)
+async def admin_panel():
+    return FileResponse(str(BASE_DIR / "static" / "admin.html"))
+
+
+@app.get("/privacy", include_in_schema=False)
+async def privacy_policy():
+    return FileResponse(str(BASE_DIR / "landing" / "privacy.html"))
+
+
+@app.get("/static/admin.html", include_in_schema=False)
+async def redirect_legacy_admin():
+    return RedirectResponse(url="/admin", status_code=301)
 
 
 @app.get("/health")

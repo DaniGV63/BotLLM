@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time as dtime, timedelta
 from zoneinfo import ZoneInfo
 
 import structlog
@@ -16,7 +16,6 @@ from app.models.group_class import (
     GroupClassSession,
     SessionState,
 )
-from app.models.tenant import Tenant
 from app.services.calendar_service import (
     create_group_calendar_event,
     update_group_calendar_attendees,
@@ -77,15 +76,6 @@ async def create_definition(
     max_capacidad: int,
     db: AsyncSession,
 ) -> GroupClassDefinition:
-    # Validar contra work_blocks del tenant
-    tenant = await db.get(Tenant, tenant_id)
-    if tenant:
-        err = _validate_against_work_blocks(
-            getattr(tenant, "work_blocks", None), dias_semana, hora, duracion_min,
-        )
-        if err:
-            raise ValueError(err)
-
     definition = GroupClassDefinition(
         tenant_id=tenant_id,
         nombre=nombre,
@@ -115,18 +105,7 @@ async def update_definition(
     definition = result.scalar_one_or_none()
     if not definition:
         return None
-    # Validar contra work_blocks si cambian dias/hora/duracion
-    if any(k in updates for k in ("dias_semana", "hora", "duracion_min")):
-        tenant = await db.get(Tenant, tenant_id)
-        if tenant:
-            check_dias = updates.get("dias_semana", json.loads(definition.dias_semana))
-            check_hora = updates.get("hora", definition.hora)
-            check_dur = updates.get("duracion_min", definition.duracion_min)
-            err = _validate_against_work_blocks(
-                getattr(tenant, "work_blocks", None), check_dias, check_hora, check_dur,
-            )
-            if err:
-                raise ValueError(err)
+    # Nota: validación de work_blocks es solo informativa (warning), no bloqueante.
     if "dias_semana" in updates:
         updates["dias_semana"] = json.dumps(updates["dias_semana"])
     for field, value in updates.items():
@@ -195,10 +174,16 @@ async def generate_upcoming_sessions(
         return
 
     today = datetime.now(MADRID_TZ).date()
-    for offset in range(1, days_ahead + 1):
+    now_time = datetime.now(MADRID_TZ).time()
+    for offset in range(0, days_ahead + 1):
         day = today + timedelta(days=offset)
         if day.weekday() not in dias:
             continue
+        # Si es hoy, omitir clases cuya hora ya pasó
+        if day == today:
+            h, m = map(int, definition.hora.split(":"))
+            if now_time >= dtime(h, m):
+                continue
         new_id = uuid.uuid4()
         stmt = (
             pg_insert(GroupClassSession)
@@ -244,6 +229,7 @@ async def get_available_sessions(
         await generate_upcoming_sessions(tenant_id, defn.id, days_ahead, db)
 
     today = datetime.now(MADRID_TZ).date()
+    now_time = datetime.now(MADRID_TZ).time()
     fecha_max = today + timedelta(days=days_ahead)
 
     sessions_result = await db.execute(
@@ -252,7 +238,7 @@ async def get_available_sessions(
         .where(
             GroupClassSession.tenant_id == tenant_id,
             GroupClassSession.estado == SessionState.PROGRAMADA.value,
-            GroupClassSession.fecha > today,
+            GroupClassSession.fecha >= today,
             GroupClassSession.fecha <= fecha_max,
         )
         .order_by(GroupClassSession.fecha, GroupClassSession.hora)
@@ -261,6 +247,11 @@ async def get_available_sessions(
 
     available = []
     for session, definition in rows:
+        # Omitir sesiones de hoy cuya hora ya pasó
+        if session.fecha == today:
+            h, m = map(int, session.hora.split(":"))
+            if now_time >= dtime(h, m):
+                continue
         count_result = await db.execute(
             select(func.count()).where(GroupClassInscription.session_id == session.id)
         )
@@ -396,8 +387,7 @@ async def cancel_inscription(
     return True
 
 
-def _parse_hora(hora: str) -> object:
-    from datetime import time as dtime
+def _parse_hora(hora: str) -> dtime:
     h, m = hora.split(":")
     return dtime(int(h), int(m))
 

@@ -4,6 +4,32 @@ let calendarInstance = null;
 let blockStart = null;
 let blockEnd = null;
 
+function _calcScrollTime() {
+    try {
+        var wb = window.currentTenant && window.currentTenant.work_blocks;
+        if (!wb || typeof wb !== 'object') return '07:00:00';
+        var earliest = null;
+        Object.values(wb).forEach(function(blocks) {
+            if (!Array.isArray(blocks)) return;
+            blocks.forEach(function(block) {
+                if (!block || !block[0]) return;
+                var parts = block[0].split(':');
+                var h = parseInt(parts[0], 10);
+                var m = parseInt(parts[1] || '0', 10);
+                var total = h * 60 + m;
+                if (earliest === null || total < earliest) earliest = total;
+            });
+        });
+        if (earliest === null) return '07:00:00';
+        var scrollMin = Math.max(0, earliest - 30);
+        var sh = Math.floor(scrollMin / 60);
+        var sm = scrollMin % 60;
+        return String(sh).padStart(2, '0') + ':' + String(sm).padStart(2, '0') + ':00';
+    } catch (_) {
+        return '07:00:00';
+    }
+}
+
 function initCalendar() {
     const container = document.getElementById('fullcalendar-container');
     if (!container) return;
@@ -24,7 +50,7 @@ function initCalendar() {
         },
         slotMinTime: '00:00:00',
         slotMaxTime: '24:00:00',
-        scrollTime: '07:00:00',
+        scrollTime: _calcScrollTime(),
         allDaySlot: false,
         height: 'auto',
         nowIndicator: true,
@@ -86,6 +112,33 @@ function initCalendar() {
 
     calendarInstance.render();
     _injectCalendarStyles();
+    _injectNavArrows();
+}
+
+function _injectNavArrows() {
+    if (document.getElementById('fc-nav-prev')) return;
+    var container = document.getElementById('fullcalendar-container');
+    if (!container) return;
+    var wrapper = container.parentElement;
+    wrapper.style.position = 'relative';
+    var btnStyle = 'position:absolute;top:50%;transform:translateY(-50%);z-index:10;'
+        + 'background:white;border:1px solid #d1d5db;border-radius:50%;width:2rem;height:2rem;'
+        + 'display:flex;align-items:center;justify-content:center;cursor:pointer;'
+        + 'box-shadow:0 1px 4px rgba(0,0,0,0.1);font-size:1rem;color:#374151;';
+    var prev = document.createElement('button');
+    prev.id = 'fc-nav-prev';
+    prev.title = 'Semana anterior';
+    prev.style.cssText = btnStyle + 'left:-1.25rem;';
+    prev.innerHTML = '&#8249;';
+    prev.onclick = function() { if (calendarInstance) calendarInstance.prev(); };
+    var next = document.createElement('button');
+    next.id = 'fc-nav-next';
+    next.title = 'Semana siguiente';
+    next.style.cssText = btnStyle + 'right:-1.25rem;';
+    next.innerHTML = '&#8250;';
+    next.onclick = function() { if (calendarInstance) calendarInstance.next(); };
+    wrapper.appendChild(prev);
+    wrapper.appendChild(next);
 }
 
 function _injectCalendarStyles() {
