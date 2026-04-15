@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.features import has_feature
+from app.models.conversation import Conversation
 from app.models.group_class import (
     GroupClassDefinition,
     GroupClassInscription,
@@ -105,7 +106,26 @@ async def get_calendar_events(
                 orderBy="startTime",
             ).execute
         )
-        for ev in result.get("items", []):
+        gcal_items = result.get("items", [])
+
+        # Bulk-fetch nombres frescos de conversations para las citas (evita nombre stale de GCal)
+        phones_in_range = {
+            ev.get("extendedProperties", {}).get("private", {}).get("phone", "")
+            for ev in gcal_items
+            if ev.get("extendedProperties", {}).get("private", {}).get("phone")
+        }
+        nombre_por_phone: dict[str, str] = {}
+        if phones_in_range:
+            conv_result = await db.execute(
+                select(Conversation.wa_phone, Conversation.nombre_paciente).where(
+                    Conversation.tenant_id == tenant.id,
+                    Conversation.wa_phone.in_(phones_in_range),
+                    Conversation.nombre_paciente.is_not(None),
+                )
+            )
+            nombre_por_phone = {row.wa_phone: row.nombre_paciente for row in conv_result.all()}
+
+        for ev in gcal_items:
             ev_start = ev.get("start", {}).get("dateTime")
             ev_end = ev.get("end", {}).get("dateTime")
             if not ev_start or not ev_end:
@@ -118,10 +138,15 @@ async def get_calendar_events(
                 .get("private", {})
                 .get("phone", "")
             )
-            is_blocked = ev.get("colorId") == "11" or (not phone and "Bloqueado" in ev.get("summary", ""))
+            # Bloqueo: colorId 11 (nuevo) o sin teléfono de paciente (legacy)
+            is_blocked = ev.get("colorId") == "11" or not phone
+            # Nombre fresco desde conversations (fuente de verdad), fallback al summary de GCal
+            title = ev.get("summary", "Cita")
+            if not is_blocked and phone and phone in nombre_por_phone:
+                title = nombre_por_phone[phone]
             events.append({
                 "id": ev.get("id"),
-                "title": ev.get("summary", "Cita"),
+                "title": title,
                 "start": ev_start,
                 "end": ev_end,
                 "color": "#fca5a5" if is_blocked else "#3b82f6",
@@ -394,6 +419,19 @@ async def get_session_detail(
     )
     inscriptions = insc_result.scalars().all()
 
+    # Nombres frescos desde conversations (fuente de verdad)
+    insc_phones = {i.wa_phone for i in inscriptions if i.wa_phone}
+    nombre_por_phone: dict[str, str] = {}
+    if insc_phones:
+        conv_rows = await db.execute(
+            select(Conversation.wa_phone, Conversation.nombre_paciente).where(
+                Conversation.tenant_id == tenant.id,
+                Conversation.wa_phone.in_(insc_phones),
+                Conversation.nombre_paciente.is_not(None),
+            )
+        )
+        nombre_por_phone = {row.wa_phone: row.nombre_paciente for row in conv_rows.all()}
+
     try:
         dias = json.loads(definition.dias_semana)
     except (json.JSONDecodeError, TypeError):
@@ -417,7 +455,7 @@ async def get_session_detail(
             GroupInscriptionRead(
                 id=i.id,
                 wa_phone=i.wa_phone,
-                nombre_paciente=i.nombre_paciente,
+                nombre_paciente=nombre_por_phone.get(i.wa_phone, i.nombre_paciente),
                 created_at=i.created_at,
             )
             for i in inscriptions

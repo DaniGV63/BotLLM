@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.features import has_feature
+from app.models.conversation import Conversation
 from app.models.group_class import GroupClassDefinition, GroupClassInscription, GroupClassSession
 from app.models.tenant import Tenant
 from app.routers.admin import TokenData, get_current_user, require_tenant_scope
@@ -230,11 +231,25 @@ async def list_inscriptions(
         )
     )
     inscriptions = result.scalars().all()
+
+    # Nombres frescos desde conversations (fuente de verdad)
+    phones = {i.wa_phone for i in inscriptions if i.wa_phone}
+    nombre_por_phone: dict[str, str] = {}
+    if phones:
+        conv_rows = await db.execute(
+            select(Conversation.wa_phone, Conversation.nombre_paciente).where(
+                Conversation.tenant_id == tenant.id,
+                Conversation.wa_phone.in_(phones),
+                Conversation.nombre_paciente.is_not(None),
+            )
+        )
+        nombre_por_phone = {row.wa_phone: row.nombre_paciente for row in conv_rows.all()}
+
     return [
         GroupInscriptionRead(
             id=i.id,
             wa_phone=i.wa_phone,
-            nombre_paciente=i.nombre_paciente,
+            nombre_paciente=nombre_por_phone.get(i.wa_phone, i.nombre_paciente),
             created_at=i.created_at,
         )
         for i in inscriptions

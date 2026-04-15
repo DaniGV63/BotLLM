@@ -2,6 +2,7 @@
 
 Guía compacta para Claude Code. Leer ENTERO antes de tocar cualquier archivo.
 Para detalles: ver PLAN.md (fases, BD, Docker) y LOGICA.md (LLM, prompts, flujo).
+Antes de cualquier exploración, indica tu mejor respuesta estimada en 1 o 2 frases. Luego, pregúntame si quiero que la verifiques en el código o que procedas con la acción.
 
 ---
 
@@ -138,8 +139,8 @@ Webhook POST → validar HMAC → deduplicar → BackgroundTask:
 ## CONFIG (.env)
 
 ```
-LLM_PROVIDER=openai        # "openai" o "gemini"
-LLM_MODEL=gpt-4o-mini      # o "gemini-2.5-flash"
+LLM_PROVIDER=gemini        # "openai" o "gemini"
+LLM_MODEL=gemini-2.5-flash      # gpt-4o-mini o "gemini-2.5-flash"
 OPENAI_API_KEY=
 GEMINI_API_KEY=             # solo si gemini
 DATABASE_URL=postgresql+asyncpg://...
@@ -151,6 +152,24 @@ GOOGLE_CLIENT_SECRET=       # OAuth2
 BASE_URL=http://localhost:8000
 LOG_LEVEL=INFO
 ```
+
+## Contexto de despliegue
+- Producción utiliza docker-compose.prod.yml (NO el docker-compose.yml por defecto)
+- La terminal es PowerShell en Windows - NO uses continuaciones de línea con barra invertida ni secuencias de escape al estilo bash
+- Comprueba siempre los nombres reales de los servicios en el archivo compose antes de ejecutar comandos de Docker
+
+## Git y Versionado
+- Al etiquetar una versión (release), usa etiquetas anotadas (git tag -a) que cubran TODOS los commits relevantes, no solo el último
+- Después de cualquier despliegue o incremento de versión, verifica que la cadena de versión esté actualizada en el código (no solo en la documentación/commits)
+- Incluye en los commits únicamente los archivos que el usuario haya mencionado explícitamente
+
+## Estilo de Planificación y Ejecución
+- Cuando el usuario haga una pregunta directa, responde directamente antes de explorar el código
+- Mantén las iteraciones del plan concisas; pregunta antes de realizar una exploración exhaustiva
+
+## Convenciones
+- Nunca marques las comprobaciones/tareas como 'completadas' en las tablas de estado hasta que se haya verificado que realmente están terminadas
+- Las credenciales/tokens deben almacenarse cifrados en .env por defecto
 
 ## FASE ACTUAL
 

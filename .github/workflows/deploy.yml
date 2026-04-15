@@ -1,0 +1,110 @@
+name: Deploy to Hetzner
+
+on:
+  push:
+    branches: [deployment]
+  workflow_dispatch:  # permite lanzar el deploy manualmente desde GitHub UI
+
+# Evita que dos deploys se pisen entre sí.
+# Si hay un deploy en curso y llega otro push, espera a que termine.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # ------------------------------------------------------------------
+      # 1. Deploy en el servidor via SSH
+      # ------------------------------------------------------------------
+      - name: Deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script_stop: true   # aborta ante el primer error (equivale a set -e)
+          script: |
+            set -euo pipefail
+            cd /opt/atendoo
+
+            # Guardar commit actual como punto de rollback
+            git rev-parse HEAD > .last_good_commit
+            echo "Commit anterior guardado: $(cat .last_good_commit)"
+
+            # Backup de BD antes del deploy (fallo no es crítico — || true)
+            mkdir -p shared/backups
+            docker compose -f docker-compose.prod.yml exec -T db \
+              pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" \
+              | gzip > "shared/backups/pre_deploy_$(date +%F_%H%M).sql.gz" || true
+            echo "Backup pre-deploy completado"
+
+            # Limpiar backups con más de 14 días
+            find shared/backups -name 'pre_deploy_*.sql.gz' -mtime +14 -delete || true
+
+            # Actualizar código fuente
+            git fetch origin deployment
+            git reset --hard origin/deployment
+            echo "Código actualizado al commit: $(git rev-parse --short HEAD)"
+
+            # Reconstruir imagen y arrancar contenedores
+            # CRÍTICO: --build garantiza que el código nuevo entra en la imagen.
+            # Sin --build, Docker reutiliza la imagen antigua aunque el código cambie.
+            docker compose -f docker-compose.prod.yml up -d --build
+            echo "Contenedores arrancados"
+
+            # Aplicar migraciones de BD (idempotente — no hace nada si ya están)
+            docker compose -f docker-compose.prod.yml exec -T app \
+              alembic upgrade head
+            echo "Migraciones aplicadas"
+
+      # ------------------------------------------------------------------
+      # 2. Healthcheck — espera hasta 60s a que la app esté lista
+      # ------------------------------------------------------------------
+      - name: Healthcheck
+        run: |
+          echo "Esperando a que la app esté lista..."
+          for i in 1 2 3 4 5 6; do
+            sleep 10
+            echo "Intento $i/6..."
+            if curl -fsS https://atendoo.app/health; then
+              echo "App OK"
+              exit 0
+            fi
+          done
+          echo "Healthcheck fallido tras 60s"
+          exit 1
+
+      # ------------------------------------------------------------------
+      # 3. Rollback automático si el deploy o el healthcheck fallan
+      # ------------------------------------------------------------------
+      - name: Rollback on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -euo pipefail
+            cd /opt/atendoo
+
+            if [ ! -f .last_good_commit ]; then
+              echo "No hay .last_good_commit — rollback imposible"
+              exit 1
+            fi
+
+            PREV=$(cat .last_good_commit)
+            echo "Haciendo rollback al commit: $PREV"
+
+            git reset --hard "$PREV"
+            docker compose -f docker-compose.prod.yml up -d --build
+            docker compose -f docker-compose.prod.yml exec -T app \
+              alembic upgrade head
+
+            echo "Rollback completado. Verificar estado manual."
