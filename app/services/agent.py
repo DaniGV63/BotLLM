@@ -480,6 +480,7 @@ async def handle_message(
                     "wa_phone": wa_phone,
                     "intent": intent,
                     "action": action_executed,
+                    "nombre_updated": bool(nombre),
                 },
             )
         except Exception:

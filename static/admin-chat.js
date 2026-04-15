@@ -87,6 +87,10 @@ function handleWsMessage(msg) {
                     viewMessages(currentViewConvId, currentViewPhone, currentViewName);
                 }
             }
+            // Si el paciente actualizó su nombre, refrescar el calendario para mostrar el nombre nuevo
+            if (msg.nombre_updated && typeof calendarInstance !== 'undefined' && calendarInstance) {
+                calendarInstance.refetchEvents();
+            }
             break;
         case 'calendar_event_changed':
             // Refresca el calendario si está activo
