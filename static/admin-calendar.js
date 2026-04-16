@@ -28,7 +28,12 @@ function initCalendar() {
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
-            right: 'timeGridWeek,timeGridDay',
+            right: 'timeGridDay,timeGridWeek',
+        },
+        buttonText: {
+            today: 'Hoy',
+            week: 'Semana',
+            day: 'Día',
         },
         slotMinTime: '00:00:00',
         slotMaxTime: '24:00:00',
@@ -150,8 +155,8 @@ function _injectCalendarStyles() {
     style.textContent = [
         // Fondo gris suave para todas las franjas (horas cerradas)
         '.fc .fc-timegrid-slot { background-color: #f3f4f6; }',
-        // Las horas fuera de horario laboral (antes 7h / después 23h) más estrechas
-        '.fc .fc-slot-offhours { height: 1.2em !important; }',
+        // Las horas fuera de horario laboral (antes 7h / después 23h) más estrechas y más oscuras
+        '.fc .fc-slot-offhours { height: 1.2em !important; background-color: #d1d5db !important; }',
         // Fuente coherente con el admin en labels de hora y cabeceras de día
         '.fc .fc-timegrid-slot-label, .fc .fc-col-header-cell, .fc .fc-toolbar-title {',
         '  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;',

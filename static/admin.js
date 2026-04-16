@@ -156,6 +156,11 @@ function showTab(name) {
     if (name === 'conversaciones') { loadConversations(1); convRefreshInterval = setInterval(() => loadConversations(1), 30000); }
     if (name === 'dashboard') { loadMetrics(); dashboardRefreshInterval = setInterval(() => loadMetrics(), 10000); if (typeof lucide !== 'undefined') lucide.createIcons(); }
     if (name === 'calendario') { if (typeof initCalendar === 'function') initCalendar(); }
+    // Flechas nav: solo visibles en tab Calendario
+    var fcPrev = document.getElementById('fc-nav-prev');
+    var fcNext = document.getElementById('fc-nav-next');
+    if (fcPrev) fcPrev.style.display = name === 'calendario' ? 'flex' : 'none';
+    if (fcNext) fcNext.style.display = name === 'calendario' ? 'flex' : 'none';
     if (name === 'chat') { if (typeof initChat === 'function') initChat(); }
     if (name === 'tenants') loadTenants();
     if (name === 'usuarios') loadUsers();
