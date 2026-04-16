@@ -57,6 +57,10 @@ jobs:
             docker compose -f docker-compose.prod.yml up -d --build
             echo "Contenedores arrancados"
 
+            # Recargar nginx para aplicar cambios en nginx.conf (en caliente, sin cortar conexiones)
+            docker compose -f docker-compose.prod.yml exec -T nginx nginx -s reload
+            echo "Nginx recargado"
+
             # Aplicar migraciones de BD (idempotente — no hace nada si ya están)
             docker compose -f docker-compose.prod.yml exec -T app \
               alembic upgrade head

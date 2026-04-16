@@ -128,7 +128,7 @@ async def get_free_slots(
     existing_events = events_result.get("items", [])
 
     result = []
-    days_found, day_offset = 0, 1
+    days_found, day_offset = 0, 0
     while days_found < days_ahead and day_offset <= days_ahead * 2:
         day = (now + timedelta(days=day_offset)).replace(
             hour=0, minute=0, second=0, microsecond=0

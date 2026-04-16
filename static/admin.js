@@ -247,13 +247,16 @@ async function loadConversations(page) {
                 const escId = escapeHtml(c.id);
                 const escPhone = escapeHtml(formatPhone(c.wa_phone));
                 const escName = escapeHtml(c.nombre_paciente || '');
-                return '<tr class="border-b hover:bg-gray-50 transition-colors duration-100">'
+                return '<tr class="border-b hover:bg-gray-50 transition-colors duration-100 cursor-pointer"'
+                    + ' data-id="' + escId + '" data-phone="' + escPhone + '" data-name="' + escName + '"'
+                    + ' onclick="handleConvRowClick(this)">'
                     + '<td class="py-2 pr-4 font-mono">' + escPhone + '</td>'
                     + '<td class="py-2 pr-4">' + (escName || '\u2014') + '</td>'
                     + '<td class="py-2 pr-4"><span class="px-2 py-0.5 rounded-full text-xs font-medium ' + b + '">' + c.estado + '</span></td>'
                     + '<td class="py-2 pr-4 text-gray-500">' + new Date(c.ultimo_mensaje_at).toLocaleString('es-ES') + '</td>'
-                    + '<td class="py-2"><button onclick="viewMessages(\'' + escId + '\',\'' + escPhone + '\',\'' + escName + '\')" class="text-[#1F2937] hover:text-black text-xs font-medium border border-[#1F2937] rounded-lg px-3 py-1">Ver</button></td></tr>';
+                    + '<td id="appts-' + escId + '" class="py-2 pr-4 text-xs text-gray-400">\u2026</td></tr>';
             }).join('');
+            _loadAllRowAppointments(data.conversations);
         }
         const tp = Math.ceil(data.total / data.page_size) || 1;
         document.getElementById('conv-pagination').innerHTML =
@@ -264,6 +267,38 @@ async function loadConversations(page) {
             + '<button onclick="loadConversations(' + (page+1) + ')" ' + (page>=tp?'disabled':'') + ' class="px-3 py-1 rounded border ' + (page>=tp?'text-gray-300':'hover:bg-gray-100') + '">Siguiente</button>'
             + '</div>';
     } catch (e) { showMsg('err', e.message); }
+}
+function handleConvRowClick(row) {
+    var id = row.getAttribute('data-id');
+    var phone = row.getAttribute('data-phone');
+    var name = row.getAttribute('data-name');
+    viewMessages(id, phone, name);
+}
+async function _loadAllRowAppointments(conversations) {
+    await Promise.allSettled(conversations.map(async function(c) {
+        var cell = document.getElementById('appts-' + c.id);
+        if (!cell) return;
+        try {
+            var data = await apiCall('GET', '/admin/conversations/' + c.id + '/appointments');
+            var items = [];
+            (data.individual || []).forEach(function(a) {
+                if (a.datetime) {
+                    var dt = new Date(a.datetime).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+                    items.push('Cita \u00b7 ' + dt);
+                }
+            });
+            (data.group || []).forEach(function(g) {
+                items.push(escapeHtml(g.nombre) + ' \u00b7 ' + escapeHtml(g.fecha));
+            });
+            if (items.length === 0) {
+                cell.textContent = '\u2014';
+            } else if (items.length === 1) {
+                cell.textContent = items[0];
+            } else {
+                cell.innerHTML = escapeHtml(items[0]) + ' <span class="text-gray-400">+' + (items.length - 1) + '</span>';
+            }
+        } catch (_) { cell.textContent = '\u2014'; }
+    }));
 }
 async function viewMessages(convId, phone, name) {
     currentViewConvId = convId;
