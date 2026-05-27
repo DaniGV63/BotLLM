@@ -140,6 +140,36 @@ async def generate_response(
             f"{json.dumps(context['appointment'], indent=2, ensure_ascii=False)}\n"
         )
 
+    if context.get("group_inscriptions"):
+        system_content += (
+            f"\n## Inscripciones grupales del paciente\n"
+            f"{json.dumps(context['group_inscriptions'], indent=2, ensure_ascii=False)}\n"
+        )
+
+    if context.get("past_appointments"):
+        system_content += (
+            f"\n## Historial de citas pasadas\n"
+            f"{json.dumps(context['past_appointments'], indent=2, ensure_ascii=False)}\n"
+        )
+
+    if context.get("upcoming_appointments"):
+        system_content += (
+            f"\n## Próxima cita individual\n"
+            f"{json.dumps(context['upcoming_appointments'], indent=2, ensure_ascii=False)}\n"
+        )
+
+    if context.get("upcoming_group_inscriptions"):
+        system_content += (
+            f"\n## Próximas clases grupales inscritas\n"
+            f"{json.dumps(context['upcoming_group_inscriptions'], indent=2, ensure_ascii=False)}\n"
+        )
+
+    if context.get("public_calendar_url"):
+        system_content += (
+            f"\n## URL calendario público\n"
+            f"{context['public_calendar_url']}\n"
+        )
+
     messages = [{"role": "system", "content": system_content}]
 
     for msg in history:

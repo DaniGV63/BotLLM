@@ -77,6 +77,9 @@ class Tenant(Base):
         Integer, nullable=False, server_default="120"
     )
 
+    # Calendario público (feature futura: link a vista de huecos)
+    public_calendar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     # Limites operacionales
     rate_limit_per_minute: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="10"

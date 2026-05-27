@@ -13,20 +13,18 @@ MADRID_TZ = ZoneInfo("Europe/Madrid")
 
 
 def slot_is_available(dt_iso: str, slots: list[dict]) -> bool:
+    """Comprueba si dt_iso aparece en la lista plana de slots [{datetime, display}]."""
     try:
         dt = datetime.fromisoformat(dt_iso)
     except ValueError:
         return False
-    d, t = dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M")
-    return any(x["date"] == d and t in x["slots"] for x in slots)
+    target = dt.strftime("%Y-%m-%dT%H:%M")
+    return any(s["datetime"] == target for s in slots)
 
 
 def format_slot_conflict_message(free_slots: list[dict]) -> str:
-    """Mensaje de conflicto con las 3 primeras alternativas disponibles."""
-    alts = [
-        f"* {d['day_name'].capitalize()} {datetime.fromisoformat(d['date']).day} a las {s}"
-        for d in free_slots for s in d["slots"]
-    ][:3]
+    """Mensaje de conflicto con hasta 3 alternativas del formato plano [{datetime, display}]."""
+    alts = [f"* {s['display']}" for s in free_slots[:3]]
     if alts:
         return (
             "Ese hueco ya no está disponible, pero tengo estos:\n\n"

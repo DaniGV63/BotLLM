@@ -2,7 +2,7 @@
 
 import asyncio
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import structlog
@@ -13,6 +13,13 @@ from app.services.google_auth import get_google_creds
 logger = structlog.get_logger()
 
 MADRID_TZ = ZoneInfo("Europe/Madrid")
+
+# Franjas horarias para filtrar slots por periodo del día
+PERIOD_RANGES: dict[str, tuple[time, time]] = {
+    "mañana":   (time(9, 0),  time(13, 0)),
+    "mediodia": (time(13, 0), time(16, 0)),
+    "tarde":    (time(16, 0), time(20, 30)),
+}
 
 _DAY_NAMES = [
     "lunes", "martes", "miercoles", "jueves",
@@ -91,25 +98,40 @@ def _overlaps(slot: datetime, duration_minutes: int, event: dict) -> bool:
     return slot < ev_end and slot_end > ev_start
 
 
+def _slot_display(dt: datetime) -> str:
+    """Formatea un slot como texto legible en español: 'viernes 29 mayo, 17:00'."""
+    month_names = [
+        "", "enero", "febrero", "marzo", "abril", "mayo", "junio",
+        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+    ]
+    day_name = _DAY_NAMES_ES[dt.weekday()]
+    return f"{day_name} {dt.day} de {month_names[dt.month]}, {dt.strftime('%H:%M')}"
+
+
 async def get_free_slots(
     tenant_id: uuid.UUID,
-    days_ahead: int = 7,
+    days_ahead: int = 14,
     duration_minutes: int = 60,
+    preferred_date: datetime | None = None,
+    preferred_period: str | None = None,
+    limit: int | None = 3,
 ) -> list[dict]:
     """Devuelve huecos libres respetando horario laboral y citas existentes.
 
+    Con limit=3 (default): devuelve los 3 huecos más cercanos a preferred_date/period.
+    Con limit=None: devuelve todos (para el safety net de validación).
+
     Returns:
-        [{"date": "2025-03-20", "day_name": "jueves", "slots": ["09:00", ...]}]
+        [{"datetime": "2026-05-29T17:00", "display": "viernes 29 de mayo, 17:00"}]
     """
     log = logger.bind(tenant_id=str(tenant_id))
-    log.info("get_free_slots_start", days_ahead=days_ahead)
+    log.info("get_free_slots_start", days_ahead=days_ahead, preferred_period=preferred_period)
 
     creds, tenant = await get_google_creds(tenant_id)
     calendar_id = tenant.google_calendar_id or "primary"
     now = datetime.now(MADRID_TZ)
     time_max = now + timedelta(days=days_ahead)
 
-    # Work blocks y duración del tenant (o defaults)
     tenant_blocks = _parse_tenant_work_blocks(getattr(tenant, "work_blocks", None))
     slot_dur = getattr(tenant, "slot_duration_minutes", None) or duration_minutes
 
@@ -127,29 +149,53 @@ async def get_free_slots(
     )
     existing_events = events_result.get("items", [])
 
-    result = []
-    days_found, day_offset = 0, 0
-    while days_found < days_ahead and day_offset <= days_ahead * 2:
+    # Generar todos los slots libres del rango como lista plana de datetime
+    all_free: list[datetime] = []
+    day_offset = 0
+    while day_offset <= days_ahead * 2:
         day = (now + timedelta(days=day_offset)).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         day_offset += 1
         if day.weekday() not in tenant_blocks:
             continue
-        free_slots = [
-            s for s in _generate_day_slots(day, slot_dur, tenant_blocks)
-            if s > now and not any(_overlaps(s, slot_dur, ev) for ev in existing_events)
-        ]
-        if free_slots:
-            result.append({
-                "date": day.strftime("%Y-%m-%d"),
-                "day_name": _DAY_NAMES[day.weekday()],
-                "slots": [s.strftime("%H:%M") for s in free_slots],
-            })
-            days_found += 1
+        for s in _generate_day_slots(day, slot_dur, tenant_blocks):
+            if s > now and not any(_overlaps(s, slot_dur, ev) for ev in existing_events):
+                all_free.append(s)
 
-    log.info("get_free_slots_done", days_returned=len(result))
-    return result
+    # Si limit=None devolver todos en formato plano (safety net)
+    if limit is None:
+        log.info("get_free_slots_done", total=len(all_free), limit="all")
+        return [
+            {"datetime": s.strftime("%Y-%m-%dT%H:%M"), "display": _slot_display(s)}
+            for s in all_free
+        ]
+
+    # Filtrar por preferencia de periodo si se proporcionó
+    period_range = PERIOD_RANGES.get(preferred_period or "")
+    candidates = all_free
+    if period_range:
+        period_start, period_end = period_range
+        in_period = [
+            s for s in all_free
+            if period_start <= s.time() < period_end
+        ]
+        # Si hay suficientes en el periodo, usar solo esos; si no, ampliar con todos
+        candidates = in_period if len(in_period) >= limit else all_free
+
+    # Ordenar por proximidad a preferred_date (o a now si no hay preferencia)
+    anchor = preferred_date or now
+    candidates.sort(key=lambda s: abs((s - anchor).total_seconds()))
+
+    result_slots = candidates[:limit]
+    # Reordenar cronológicamente para presentar al paciente
+    result_slots.sort()
+
+    log.info("get_free_slots_done", returned=len(result_slots), limit=limit)
+    return [
+        {"datetime": s.strftime("%Y-%m-%dT%H:%M"), "display": _slot_display(s)}
+        for s in result_slots
+    ]
 
 
 async def get_appointment_by_phone(

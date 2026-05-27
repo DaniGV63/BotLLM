@@ -244,6 +244,10 @@ async def handle_message(
             "es_primera_interaccion": es_primera_interaccion,
         }
 
+        # URL calendario público (feature futura: se activa cuando el tenant la tenga)
+        if _t and getattr(_t, "public_calendar_url", None):
+            context["public_calendar_url"] = _t.public_calendar_url
+
         if intent == "agendar_cita":
             if not features.get("calendar.schedule", False):
                 await send_text(tenant_id, wa_phone, FEATURE_NOT_AVAILABLE_MSG, db)
@@ -251,27 +255,24 @@ async def handle_message(
             if (await count_active_appointments(tenant_id, wa_phone)) >= max_citas:
                 await send_text(tenant_id, wa_phone, MAX_CITAS_MSG, db)
                 return
-            context["free_slots"] = await get_free_slots(tenant_id)
+            # Los slots NO se cargan aquí. El LLM pregunta preferencia primero.
+            # Si el historial ya contiene slot_preference (turno anterior), se cargan abajo.
             if features.get("groups.sessions", False):
                 group_slots = await get_group_slots_for_bot(tenant_id, 7, db)
                 if group_slots:
                     context["group_slots"] = group_slots
+
         elif intent in ("cancelar_cita", "modificar_cita"):
             feature_key = "calendar.cancel" if intent == "cancelar_cita" else "calendar.modify"
             if not features.get(feature_key, False):
                 await send_text(tenant_id, wa_phone, FEATURE_NOT_AVAILABLE_MSG, db)
                 return
-            context["appointment"] = await get_appointment_by_phone(
-                tenant_id, wa_phone
-            )
+            context["appointment"] = await get_appointment_by_phone(tenant_id, wa_phone)
             if features.get("groups.sessions", False):
                 context["group_inscriptions"] = await get_patient_upcoming_inscriptions(
                     tenant_id, wa_phone, db
                 )
-            if intent == "modificar_cita":
-                context["free_slots"] = await get_free_slots(tenant_id)
-                if features.get("groups.sessions", False):
-                    context["group_slots"] = await get_group_slots_for_bot(tenant_id, 7, db)
+            # modificar_cita también necesita slots; se cargan tras slot_preference (ver abajo)
 
         elif intent == "consultar_historial":
             context["past_appointments"] = await get_past_appointments(tenant_id, wa_phone)
@@ -281,10 +282,33 @@ async def handle_message(
             )
 
         # 6. Generar respuesta (llamada 2 al LLM)
+        # Para agendar/modificar: primera llamada sin slots para que el LLM pregunte
+        # preferencia. Si devuelve slot_preference completo, segunda llamada con slots.
         try:
-            response = await generate_response(
-                message_text, intent, context, history
-            )
+            response = await generate_response(message_text, intent, context, history)
+
+            slot_pref = response.get("slot_preference")
+            needs_slots = intent in ("agendar_cita", "modificar_cita")
+            if needs_slots and slot_pref and slot_pref.get("date"):
+                # Paciente ya dio preferencia → cargar slots y responder de nuevo
+                try:
+                    pref_dt = datetime.fromisoformat(slot_pref["date"]).replace(
+                        tzinfo=MADRID_TZ
+                    )
+                except (ValueError, TypeError):
+                    pref_dt = None
+
+                context["free_slots"] = await get_free_slots(
+                    tenant_id,
+                    preferred_date=pref_dt,
+                    preferred_period=slot_pref.get("period"),
+                    limit=3,
+                )
+                if intent == "modificar_cita" and features.get("groups.sessions", False):
+                    context["group_slots"] = await get_group_slots_for_bot(tenant_id, 7, db)
+
+                response = await generate_response(message_text, intent, context, history)
+
         except Exception as e:
             log.error("generate_response_error", error=str(e))
             await send_text(tenant_id, wa_phone, FALLBACK_MSG, db)
@@ -340,11 +364,11 @@ async def handle_message(
                             if not await acquire_lock(slot_key, ttl=60):
                                 log.warning("slot_concurrent", datetime=dt_iso)
                                 reply_text = format_slot_conflict_message(
-                                    await get_free_slots(tenant_id)
+                                    await get_free_slots(tenant_id, limit=None)
                                 )
                                 execute = False
                             else:
-                                fresh = await get_free_slots(tenant_id)
+                                fresh = await get_free_slots(tenant_id, limit=None)
                                 if not slot_is_available(dt_iso, fresh):
                                     log.warning("slot_taken", datetime=dt_iso)
                                     reply_text = format_slot_conflict_message(fresh)
